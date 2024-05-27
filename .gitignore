@@ -1,0 +1,16 @@
+verdiLog/
+csrc/
+simv.daidir/
+*.fsdb
+simv
+ucli.key
+novas*
+test_run_tmp/*
+*/**/test_run_tmp
+*.log
+*.fsdb.*
+*/**/obj_dir
+run/build/*
+run/sim_out/*
+corpus/silesia*
+beezip-ae.tar.gz

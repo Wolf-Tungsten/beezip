@@ -1,0 +1,22 @@
+`define DEBUG_LOG
+
+`ifdef DEBUG_LOG
+
+//`define HASH_ENGINE_DEBUG_LOG // toggle HashEngine Log
+
+`ifdef HASH_ENGINE_DEBUG_LOG
+`define HASH_VALUE_LOG
+`define HASH_RESULT_LOG
+`endif
+
+//`define MATCH_ENGINE_DEBUG_LOG // toggle MatchEngine Log
+
+`ifdef MATCH_ENGINE_DEBUG_LOG
+`define MATCH_ENGINE_INPUT_LOG
+`define JOB_DISPATCHER_LOG
+`define MATCH_PE_COORD_STATE_MACHINE_LOG
+`define MATCH_PE_SLOT_STATE_MACHINE_LOG
+`define MATCH_PU_LOG
+`endif // MATCH_ENGINE_DEBUG_LOG
+
+`endif // DEBUG_LOG
