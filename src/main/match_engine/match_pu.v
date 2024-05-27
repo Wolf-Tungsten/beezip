@@ -1,4 +1,5 @@
 `include "parameters.vh"
+`include "util.vh"
 
 module burst_launch (
         input wire clk,

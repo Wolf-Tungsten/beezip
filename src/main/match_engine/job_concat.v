@@ -1,4 +1,5 @@
 `include "parameters.vh"
+`default_nettype none
 
 module job_concat (
         input wire clk,

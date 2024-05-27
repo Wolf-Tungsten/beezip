@@ -1,5 +1,6 @@
 `include "parameters.vh"
 `include "log.vh"
+`include "util.vh"
 
 module job_collector (
     input wire clk,

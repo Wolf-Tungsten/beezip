@@ -1,5 +1,7 @@
 `include "parameters.vh"
 `include "log.vh"
+`include "util.vh"
+
 module job_seq_pack (
         input wire clk,
         input wire rst_n,

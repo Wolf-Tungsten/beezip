@@ -61,7 +61,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*(`MAX_MATCH_LEN_LOG2+1)-1:0] slot_resp_match_len;
     wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] slot_resp_extp;
 
-    intra_pe_coordinator #(.MATCH_PE_IDX(MATCH_PE_IDX)) intra_pe_coordinator_inst (
+    match_pe_coordinator #(.MATCH_PE_IDX(MATCH_PE_IDX)) match_pe_coordinator_inst (
         .clk(clk),
         .rst_n(rst_n),
 

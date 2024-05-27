@@ -1,5 +1,5 @@
 `include "parameters.vh"
-
+`default_nettype none
 module hash_engine_top(
     input wire clk,
     input wire rst_n,
@@ -16,6 +16,9 @@ module hash_engine_top(
     output wire [`HASH_ISSUE_WIDTH-1:0] output_row_valid,
     output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_history_valid_vec,
     output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] output_history_addr_vec,
+    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len_vec,
+    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_meta_match_can_ext_vec,
+    output wire [`HASH_ISSUE_WIDTH*8-1:0] output_data,
     output wire output_delim,
     input wire output_ready
 );
@@ -33,7 +36,7 @@ module hash_engine_top(
     wire ready_between_buffer_compute;
     wire delim_between_buffer_compute;
     wire [`ADDR_WIDTH-1:0] head_addr_between_buffer_compute;
-    wire [(`HASH_ISSUE_WIDTH+`HASH_COVER_BYTES-1)*8-1:0] data_between_buffer_compute;
+    wire [(`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8-1:0] data_between_buffer_compute;
 
     // signals between hash_compute and pre_hash_pe_scheduler
     wire valid_between_comp_pre_schd;
@@ -41,12 +44,14 @@ module hash_engine_top(
     wire delim_between_comp_pre_schd;
     wire [`ADDR_WIDTH-1:0] head_addr_between_comp_pre_schd;
     wire [`HASH_BITS*`HASH_ISSUE_WIDTH-1:0] hash_value_vec_between_comp_pre_schd;
+    wire [(`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8-1:0] data_between_comp_pre_schd; 
 
     // signals between pre_hash_pe_scheduler and hash_pe_array
     wire valid_between_pre_schd_pe_array;
     wire [`NUM_HASH_PE-1:0] mask_between_pre_schd_pe_array;
     wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] addr_between_pre_schd_pe_array;
     wire [`NUM_HASH_PE*(`HASH_BITS-`NUM_HASH_PE_LOG2)-1:0] hash_value_between_pre_schd_pe_array;
+    wire [(`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8-1:0] data_between_pre_schd_pe_array;
     wire [`NUM_HASH_PE-1:0] delim_between_pre_schd_pe_array;
     wire ready_between_pre_schd_pe_array;
 
@@ -56,7 +61,10 @@ module hash_engine_top(
     wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] addr_between_pe_array_post_schd;
     wire [`NUM_HASH_PE*`ADDR_WIDTH*`ROW_SIZE-1:0] history_addr_vec_between_pe_array_post_schd;
     wire [`NUM_HASH_PE*`ROW_SIZE-1:0] history_valid_vec_between_pe_array_post_schd;
+    wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_vec_between_pe_array_post_schd;
+    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] meta_match_can_ext_vec_between_pe_array_post_schd;
     wire [`NUM_HASH_PE-1:0] delim_between_pe_array_post_schd;
+    wire [`HASH_ISSUE_WIDTH*8-1:0] data_between_pe_array_post_schd;
     wire ready_between_pe_array_post_schd;
 
 
@@ -90,6 +98,7 @@ module hash_engine_top(
         .output_head_addr(head_addr_between_comp_pre_schd),
         .output_hash_value_vec(hash_value_vec_between_comp_pre_schd),
         .output_delim(delim_between_comp_pre_schd),
+        .output_data(data_between_comp_pre_schd),
         .output_ready(ready_between_comp_pre_schd)
     );
 
@@ -102,13 +111,15 @@ module hash_engine_top(
         .input_valid(valid_between_comp_pre_schd),
         .input_head_addr(head_addr_between_comp_pre_schd), // low bits of the head address is always 0
         .input_hash_value_vec(hash_value_vec_between_comp_pre_schd),
+        .input_data(data_between_comp_pre_schd),
         .input_delim(delim_between_comp_pre_schd),
         .input_ready(ready_between_comp_pre_schd),
     
         .output_valid(valid_between_pre_schd_pe_array),
         .output_mask(mask_between_pre_schd_pe_array),
-        .output_addr(addr_between_pre_schd_pe_array), 
-        .output_hash_value(hash_value_between_pre_schd_pe_array), // only in hash bank part
+        .output_addr(addr_between_pre_schd_pe_array), // hash 值所在的地址
+        .output_hash_value(hash_value_between_pre_schd_pe_array), // 输出的hash值只包含bank内地址和tag部分
+        .output_data(data_between_pre_schd_pe_array),
         .output_delim(delim_between_pre_schd_pe_array),
         .output_ready(ready_between_pre_schd_pe_array) 
     );
@@ -121,6 +132,7 @@ module hash_engine_top(
         .input_mask(mask_between_pre_schd_pe_array),
         .input_addr_vec(addr_between_pre_schd_pe_array),
         .input_hash_value_vec(hash_value_between_pre_schd_pe_array),
+        .input_data(data_between_pre_schd_pe_array),
         .input_delim_vec(delim_between_pre_schd_pe_array),
         .input_ready(ready_between_pre_schd_pe_array),
 
@@ -129,6 +141,9 @@ module hash_engine_top(
         .output_addr_vec(addr_between_pe_array_post_schd),
         .output_history_valid_vec(history_valid_vec_between_pe_array_post_schd),
         .output_history_addr_vec(history_addr_vec_between_pe_array_post_schd),
+        .output_meta_match_len_vec(meta_match_len_vec_between_pe_array_post_schd),
+        .output_meta_match_can_ext_vec(meta_match_can_ext_vec_between_pe_array_post_schd),
+        .output_data(data_between_pe_array_post_schd),
         .output_delim_vec(delim_between_pe_array_post_schd),
         .output_ready(ready_between_pe_array_post_schd)
     );
@@ -144,6 +159,9 @@ module hash_engine_top(
         .input_addr_vec(addr_between_pe_array_post_schd),
         .input_history_valid_vec(history_valid_vec_between_pe_array_post_schd),
         .input_history_addr_vec(history_addr_vec_between_pe_array_post_schd),
+        .input_meta_match_len_vec(meta_match_len_vec_between_pe_array_post_schd),
+        .input_meta_match_can_ext_vec(meta_match_can_ext_vec_between_pe_array_post_schd),
+        .input_data(data_between_pe_array_post_schd),
         .input_delim_vec(delim_between_pe_array_post_schd),
         .input_ready(ready_between_pe_array_post_schd),
         
@@ -152,6 +170,9 @@ module hash_engine_top(
         .output_row_valid(output_row_valid),
         .output_history_valid_vec(output_history_valid_vec),
         .output_history_addr_vec(output_history_addr_vec),
+        .output_meta_match_len_vec(output_meta_match_len_vec),
+        .output_meta_match_can_ext_vec(output_meta_match_can_ext_vec),
+        .output_data(output_data),
         .output_delim(output_delim),
         .output_ready(output_ready)
     );

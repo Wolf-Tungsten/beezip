@@ -42,20 +42,22 @@ module hash_compute
         input wire rst_n,
         input wire input_valid,
         input wire [`ADDR_WIDTH-1:0] input_head_addr,
-        input wire [(`HASH_ISSUE_WIDTH+`HASH_COVER_BYTES-1)*8-1:0] input_data,
+        input wire [(`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8-1:0] input_data,
         input wire input_delim,
         output wire input_ready,
         output wire output_valid,
         output wire [`ADDR_WIDTH-1:0] output_head_addr,
         output wire [`HASH_BITS*`HASH_ISSUE_WIDTH-1:0] output_hash_value_vec,
+        output wire [(`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8-1:0] output_data,
         output wire output_delim,
         input wire output_ready
     );
 
-    localparam PAYLOAD_WIDTH = `ADDR_WIDTH + `HASH_BITS*`HASH_ISSUE_WIDTH + 1;
+    localparam PAYLOAD_WIDTH = `ADDR_WIDTH + `HASH_BITS*`HASH_ISSUE_WIDTH + 1 + (`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8;
 
     reg valid_0_reg, valid_1_reg;
     reg [`ADDR_WIDTH-1:0] head_addr_0_reg, head_addr_1_reg;
+    reg [(`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8-1:0] data_0_reg, data_1_reg;
     reg delim_0_reg, delim_1_reg;
     wire [`HASH_BITS*`HASH_ISSUE_WIDTH-1:0] hash_value_vec;
     wire payload_reg_ready;
@@ -105,10 +107,10 @@ module hash_compute
                     .clk(clk),
                     .rst_n(rst_n),
                     .input_valid(valid_1_reg),
-                    .input_payload({head_addr_1_reg, hash_value_vec, delim_1_reg}),
+                    .input_payload({head_addr_1_reg, hash_value_vec, delim_1_reg, data_1_reg}),
                     .input_ready(payload_reg_ready),
                     .output_valid(output_valid),
-                    .output_payload({output_head_addr, output_hash_value_vec, output_delim}),
+                    .output_payload({output_head_addr, output_hash_value_vec, output_delim, output_data}),
                     .output_ready(output_ready)
                 );
 
@@ -125,6 +127,8 @@ module hash_compute
                 head_addr_1_reg <= head_addr_0_reg;
                 delim_0_reg <= input_delim;
                 delim_1_reg <= delim_0_reg;
+                data_0_reg <= input_data;
+                data_1_reg <= data_0_reg;
             end
         end
     end

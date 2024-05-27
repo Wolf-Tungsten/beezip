@@ -1,4 +1,4 @@
-
+`include "util.vh"
 module fifo #(parameter DEPTH = 4, W = 8) (
     input wire clk,
     input wire rst_n,

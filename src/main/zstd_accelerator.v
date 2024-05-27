@@ -1,7 +1,8 @@
+`default_nettype none
 `include "parameters.vh"
 `include "log.vh"
 
-module beezip (
+module zstd_accelerator (
     input wire clk,
     input wire rst_n,
 

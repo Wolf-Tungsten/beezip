@@ -17,7 +17,9 @@ module hash_pe_request_serializer(
         output reg [`ADDR_WIDTH-1:0] output_addr,
         output reg [`HASH_BITS-`NUM_HASH_PE_LOG2-1:0] output_hash_value,
         output reg output_delim,
-        input wire output_ready
+        input wire output_ready,
+
+        output wire in_flush_mode
     );
 
     wire p_rst_n;
@@ -110,6 +112,8 @@ module hash_pe_request_serializer(
         end
     end
 
+    assign in_flush_mode = state_reg[FLUSH];
+
     always @(*) begin: hprs_fsm_logic
         integer i;
         for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
@@ -140,9 +144,9 @@ module hash_pe_request_serializer(
                     output_addr = input_head_addr + input_valid_sel;
                     output_delim = input_delim;
                     if(output_ready) begin
-                        // output not blocked
+                        // 输出不阻塞
                         if(input_valid_count > 1 && cfg_max_queued_req_num > 1) begin
-                            // multiple valid requests, output the first one, write the rest into buffer
+                            // 有多个有效输入，输出第一个 request，将剩余 request 写入 buffer
                             buffer_hash_value_arr_reg_en = 1'b1;
                             buffer_mask_vec_reg_en = 1'b1;
                             buffer_head_addr_reg_en = 1'b1;
@@ -153,17 +157,17 @@ module hash_pe_request_serializer(
                             counter_reg_en = 1'b1;
                             for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
                                 buffer_hash_value_arr_reg_d[i * (`HASH_BITS-`NUM_HASH_PE_LOG2) +: `HASH_BITS-`NUM_HASH_PE_LOG2] = input_hash_value_arr[i];
-                                buffer_mask_vec_reg_d[i] = input_mask_vec[i] && (i != input_valid_sel); // skip the first one
+                                buffer_mask_vec_reg_d[i] = input_mask_vec[i] && (i != input_valid_sel); // 不写入第一个
                             end
                             next_state[FLUSH] = 1'b1;
                         end
                         else begin
-                            // only one valid request, no need to write into buffer
+                            // 只有一个有效输入，可以直接处理下一拍
                             next_state[NORMAL] = 1'b1;
                         end
                     end
                     else begin
-                        // no output, write all into buffer
+                        // 一个都输出不了，全写入到 buffer 中
                         buffer_hash_value_arr_reg_en = 1'b1;
                         buffer_mask_vec_reg_en = 1'b1;
                         buffer_head_addr_reg_en = 1'b1;
@@ -191,9 +195,9 @@ module hash_pe_request_serializer(
                     if(buffer_valid_count > 1 && counter_reg_q + 1 < cfg_max_queued_req_num) begin
                         counter_reg_d = counter_reg_q + 1;
                         counter_reg_en = 1;
-                        // buffer is not cleared
+                        // buffer 尚未清空
                         next_state[FLUSH] = 1'b1;
-                        // update mask vec reg
+                        // 更新 mask vec reg
                         buffer_mask_vec_reg_en = 1'b1;
                         for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
                             buffer_mask_vec_reg_d[i] = buffer_mask_vec_reg_q[i] && (i != buffer_valid_sel);

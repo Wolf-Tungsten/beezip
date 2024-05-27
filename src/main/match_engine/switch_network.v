@@ -1,4 +1,6 @@
 `include "parameters.vh"
+`include "util.vh"
+`default_nettype none
 
 module switch_fifo #(parameter ADDR_WIDTH=`ADDR_WIDTH, parameter SWITCH_IDX_WIDTH=2)
     (input wire clk,

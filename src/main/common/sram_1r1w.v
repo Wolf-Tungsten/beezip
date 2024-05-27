@@ -1,4 +1,4 @@
-
+`include "util.vh"
 // SRAM 1-Read 1-Write
 module sram_1r1w #(parameter WORD_SIZE = 8,
                      ADDR_SIZE = 4)
