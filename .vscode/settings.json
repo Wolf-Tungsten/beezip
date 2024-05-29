@@ -1,0 +1,4 @@
+{
+    "verilog.linting.verilator.includePath": [],
+    "verilog.linting.verilator.arguments": "-F beezip.f"
+}

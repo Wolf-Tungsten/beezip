@@ -30,8 +30,6 @@ module job_pe #(parameter MATCH_PE_IDX = 0)(
         output wire o_match_req_valid,
         output wire [`ADDR_WIDTH-1:0] o_match_req_head_addr,
         output wire [`ADDR_WIDTH-1:0] o_match_req_history_addr,
-        output wire [`JOB_PE_NUM_LOG2-1:0] o_match_req_job_pe_id,
-        output wire [`ROW_SIZE_LOG2-1:0] o_match_req_slot_id,
         input wire  i_match_req_ready,
 
         // match resp port
