@@ -1,7 +1,7 @@
 `default_nettype none
 `include "util.vh"
 
-module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15) (
+module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15, NBPIPE=3) (
     input wire clk,
     input wire rst_n,
     // 对齐写入
@@ -19,8 +19,8 @@ module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15) (
     localparam BANK_ADDR_SIZE = SIZE_BYTES_LOG2 - ADDR_UNALIGNED_PART - 1; // 拆分到两个 bank 里，所以单个 bank 的地址空间减半
 
 
-    reg bank_read_sel_reg;
-    reg [ADDR_UNALIGNED_PART-1:0] read_shift_bytes_reg;
+    reg bank_read_sel_reg [NBPIPE+1-1:0];
+    reg [ADDR_UNALIGNED_PART-1:0] read_shift_bytes_reg [NBPIPE+1-1:0];
 
     wire bank_lo_read_enable, bank_hi_read_enable, bank_lo_write_enable, bank_hi_write_enable;
     wire [BANK_ADDR_SIZE-1:0] bank_lo_read_addr, bank_hi_read_addr, bank_lo_write_addr, bank_hi_write_addr;
@@ -36,18 +36,25 @@ module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15) (
     assign {bank_read_addr_base, bank_read_sel, read_shift_bytes} = read_address;
     assign bank_lo_read_enable = read_enable;
     assign bank_hi_read_enable = read_enable;
-    assign bank_lo_read_addr = bank_read_addr_base + bank_read_sel;
+    assign bank_lo_read_addr = bank_read_addr_base + {{(BANK_ADDR_SIZE-1){1'b0}}, bank_read_sel};
     assign bank_hi_read_addr = bank_read_addr_base;
-    assign bank_read_data_concat = bank_read_sel_reg ? {bank_lo_read_data, bank_hi_read_data} : {bank_hi_read_data, bank_lo_read_data};
-    assign read_data = bank_read_data_concat >> ({read_shift_bytes_reg, 3'b0});
+    assign bank_read_data_concat = bank_read_sel_reg[NBPIPE] ? {bank_lo_read_data, bank_hi_read_data} : {bank_hi_read_data, bank_lo_read_data};
+    assign read_data = {(bank_read_data_concat >> ({read_shift_bytes_reg[NBPIPE], 3'b0}))}[WIDTH_BYTES*8-1:0];
+    integer i;
     always @(posedge clk) begin
         if (~rst_n) begin
-            bank_read_sel_reg <= `TD 0;
-            read_shift_bytes_reg <= `TD 0;
+            for(i=0; i < NBPIPE+1; i=i+1) begin
+                bank_read_sel_reg[i] <= 0;
+                read_shift_bytes_reg[i] <= 0;
+            end
         end else begin
             if(read_enable) begin
-                bank_read_sel_reg <= `TD bank_read_sel;
-                read_shift_bytes_reg <= `TD read_shift_bytes;
+                bank_read_sel_reg[0] <= bank_read_sel;
+                read_shift_bytes_reg[0] <= read_shift_bytes;
+                for(i=1; i < NBPIPE+1; i=i+1) begin
+                    bank_read_sel_reg[i] <= bank_read_sel_reg[i-1];
+                    read_shift_bytes_reg[i] <= read_shift_bytes_reg[i-1];
+                end
             end
         end
     end
@@ -59,23 +66,23 @@ module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15) (
     assign bank_lo_write_data = write_data;
     assign bank_hi_write_data = write_data;
 
-    sram_1r1w #(.WORD_SIZE(BANK_WIDTH_BITS), .ADDR_SIZE(BANK_ADDR_SIZE)) bank_lo (
+    sram2p #(.DWIDTH(BANK_WIDTH_BITS), .AWIDTH(BANK_ADDR_SIZE), .NBPIPE(NBPIPE)) bank_lo (
                   .clk(clk),
                   .rst_n(rst_n),
+                  .mem_enable(bank_lo_read_enable | bank_lo_write_enable),
                   .write_enable(bank_lo_write_enable),
                   .write_address(bank_lo_write_addr),
                   .write_data(bank_lo_write_data),
-                  .read_enable(bank_lo_read_enable),
                   .read_address(bank_lo_read_addr),
                   .read_data(bank_lo_read_data)
               );
-    sram_1r1w #(.WORD_SIZE(BANK_WIDTH_BITS), .ADDR_SIZE(BANK_ADDR_SIZE)) bank_hi (
+    sram2p #(.DWIDTH(BANK_WIDTH_BITS), .AWIDTH(BANK_ADDR_SIZE), .NBPIPE(NBPIPE)) bank_hi (
                   .clk(clk),
                   .rst_n(rst_n),
+                  .mem_enable(bank_hi_read_enable | bank_hi_write_enable),
                   .write_enable(bank_hi_write_enable),
                   .write_address(bank_hi_write_addr),
                   .write_data(bank_hi_write_data),
-                  .read_enable(bank_hi_read_enable),
                   .read_address(bank_hi_read_addr),
                   .read_data(bank_hi_read_data)
               );
