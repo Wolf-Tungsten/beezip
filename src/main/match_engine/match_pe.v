@@ -37,7 +37,6 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     
     // 使用优先编码器选择目的scoreboard的条目
     reg [SCOREBOARD_ENTRY_INDEX-1:0] first_free_entry;
-    reg [SCOREBOARD_ENTRY_INDEX-1:0] first_wait_entry;
     reg [SCOREBOARD_ENTRY_INDEX-1:0] first_done_entry;
     reg no_free_entry;
     reg has_wait_entry;
@@ -45,7 +44,6 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     integer i;
     always @(*) begin
         first_free_entry = 0;
-        first_wait_entry = 0;
         first_done_entry = 0;
         no_free_entry = 1;
         has_wait_entry = 0;
@@ -56,9 +54,6 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
             has_done_entry = has_done_entry | scoreboard_done_reg[i];
             if(scoreboard_occupied_reg[i] == 0) begin
                 first_free_entry = i[SCOREBOARD_ENTRY_INDEX-1:0];
-            end
-            if(scoreboard_wait_reg[i] == 1) begin
-                first_wait_entry = i[SCOREBOARD_ENTRY_INDEX-1:0];
             end
             if(scoreboard_done_reg[i] == 1) begin
                 first_done_entry = i[SCOREBOARD_ENTRY_INDEX-1:0];
@@ -77,50 +72,20 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     // 猝发计数器
     reg [`ADDR_WIDTH-1:0] burst_addr_bias_reg;
     localparam MAX_BURST_ADDR_BIAS = `MATCH_BURST_LEN * `MATCH_PU_WIDTH;
-    always @(posedge clk) begin
-        if(~rst_n) begin
-            burst_addr_bias_reg <= 0;    
-        end else begin
-            if(~has_wait_entry) begin
-                burst_addr_bias_reg <= 0;
-            end else if(burst_addr_bias_reg == MAX_BURST_ADDR_BIAS) begin
-                burst_addr_bias_reg <= 0;
-            end else begin
-                burst_addr_bias_reg <= burst_addr_bias_reg + `MATCH_PU_WIDTH;
-            end
-        end 
-    end
-
-    // 该把请求写入到哪个条目上呢？
-    reg [SCOREBOARD_ENTRY_INDEX-1:0] req_entry_reg;
-    wire [SCOREBOARD_ENTRY_INDEX-1:0] next_req_entry = req_entry_reg + 1;
-    always @(posedge clk) begin
-        if(~rst_n) begin
-            req_entry_reg <= 0;
-        end else begin
-            if(~scoreboard_occupied_reg[req_entry_reg] && i_match_req_valid) begin
-                if(~scoreboard_occupied_reg[next_req_entry]) begin
-                    req_entry_reg <= next_req_entry;
-                end else begin
-                    req_entry_reg <= first_free_entry;
-                end
-            end
-        end
-    end // TODO: 记得修改所有 first_free_entry 为 req_entry_reg
-
     // 该把哪个条目发射到流水线上呢？
     reg [SCOREBOARD_ENTRY_INDEX-1:0] issue_entry_reg;
     wire [SCOREBOARD_ENTRY_INDEX-1:0] next_issue_entry = issue_entry_reg + 1;
+
     always @(posedge clk) begin
         if(~rst_n) begin
+            burst_addr_bias_reg <= 0; 
             issue_entry_reg <= 0;
         end else begin
-            if(burst_addr_bias_reg == MAX_BURST_ADDR_BIAS) begin
-                if(scoreboard_wait_reg[next_issue_entry]) begin
-                    issue_entry_reg <= next_issue_entry;
-                end else begin
-                    issue_entry_reg <= first_wait_entry;
-                end
+            if(burst_addr_bias_reg == MAX_BURST_ADDR_BIAS || ~scoreboard_wait_reg[next_issue_entry]) begin
+                burst_addr_bias_reg <= 0;
+                issue_entry_reg <= next_issue_entry;
+            end else begin
+                burst_addr_bias_reg <= burst_addr_bias_reg + `MATCH_PU_WIDTH;
             end
         end
     end
@@ -144,9 +109,13 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
             if(~rst_n) begin
                 scoreboard_occupied_reg[i] <= 1'b0;
             end else begin
-                if(~scoreboard_occupied_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry)) begin
+                if(~scoreboard_occupied_reg[i]) begin
                     if(i_match_req_valid) begin
-                        scoreboard_occupied_reg[i] <= 1'b1;
+                        if(next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
+                            scoreboard_occupied_reg[i] <= 1'b1;
+                        end else if (scoreboard_occupied_reg[next_issue_entry] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry)) begin
+                            scoreboard_occupied_reg[i] <= 1'b1; 
+                        end
                     end
                 end else if (scoreboard_occupied_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry) && scoreboard_done_reg[i]) begin
                     if(i_match_resp_ready) begin
@@ -163,9 +132,15 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
             if(~rst_n) begin
                 scoreboard_wait_reg[i] <= 1'b0;
             end else begin
-                if((i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry) && ~scoreboard_occupied_reg[i]) begin
+                if(~scoreboard_occupied_reg[i]) begin
                     if(i_match_req_valid) begin
-                        scoreboard_wait_reg[i] <= 1'b1;
+                        if(next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
+                            // 下一个要发射的条目就是我
+                            scoreboard_wait_reg[i] <= 1'b1;
+                        end else if (scoreboard_occupied_reg[next_issue_entry] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry)) begin
+                            // 下一个要发射的条目已经被占用了，并且当前条目是第一个空闲的条目
+                            scoreboard_wait_reg[i] <= 1'b1; 
+                        end
                     end
                 end else if(scoreboard_wait_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == issue_entry_reg) ) begin
                     if(burst_addr_bias_reg == MAX_BURST_ADDR_BIAS) begin
@@ -191,7 +166,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                 if(~scoreboard_done_reg[i] && pipeline_o_valid && pipeline_o_last && (pipeline_o_idx == i[SCOREBOARD_ENTRY_INDEX-1:0])) begin // 当流水线出现 last，且指向当前条目
                     if(~scoreboard_match_contd_reg[i] || 
                     pipeline_o_match_len < `MATCH_PU_WIDTH || // 匹配不连续（已中断）
-                    scoreboard_match_len_reg[i] + pipeline_o_match_len >= `MAX_MATCH_LEN) begin //或者
+                    scoreboard_match_len_reg[i] + pipeline_o_match_len >= `MAX_MATCH_LEN) begin //已达到最大长度
                         scoreboard_done_reg[i] <= 1'b1;
                     end 
                 end else if(scoreboard_done_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry)) begin
