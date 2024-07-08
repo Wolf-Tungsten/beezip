@@ -71,7 +71,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
 
     // 猝发计数器
     reg [`ADDR_WIDTH-1:0] burst_addr_bias_reg;
-    localparam MAX_BURST_ADDR_BIAS = `MATCH_BURST_LEN * `MATCH_PU_WIDTH;
+    localparam MAX_BURST_ADDR_BIAS = `MATCH_BURST_LEN * `MATCH_PE_WIDTH;
     // 该把哪个条目发射到流水线上呢？
     reg [SCOREBOARD_ENTRY_INDEX-1:0] issue_entry_reg;
     wire [SCOREBOARD_ENTRY_INDEX-1:0] next_issue_entry = issue_entry_reg + 1;
@@ -85,7 +85,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                 burst_addr_bias_reg <= 0;
                 issue_entry_reg <= next_issue_entry;
             end else begin
-                burst_addr_bias_reg <= burst_addr_bias_reg + `MATCH_PU_WIDTH;
+                burst_addr_bias_reg <= burst_addr_bias_reg + `MATCH_PE_WIDTH;
             end
         end
     end
@@ -148,9 +148,9 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                     end
                 end else if (~scoreboard_wait_reg[i] && pipeline_o_valid && pipeline_o_last &&
                 (pipeline_o_idx == i[SCOREBOARD_ENTRY_INDEX-1:0]) && // 流水线输出有效且指向当前条目
-                (pipeline_o_match_len == `MATCH_PU_WIDTH) && // 最后一个匹配仍然饱和
+                (pipeline_o_match_len == `MATCH_PE_WIDTH) && // 最后一个匹配仍然饱和
                 scoreboard_match_contd_reg[i] && // 之前的匹配都饱和
-                scoreboard_match_len_reg[i] < (`MAX_MATCH_LEN - `MATCH_PU_WIDTH)) begin // 尚未达到最大匹配长度
+                scoreboard_match_len_reg[i] < (`MAX_MATCH_LEN - `MATCH_PE_WIDTH)) begin // 尚未达到最大匹配长度
                     scoreboard_wait_reg[i] <= 1'b1; // 继续下一轮匹配
                 end
             end
@@ -165,7 +165,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
             end else begin
                 if(~scoreboard_done_reg[i] && pipeline_o_valid && pipeline_o_last && (pipeline_o_idx == i[SCOREBOARD_ENTRY_INDEX-1:0])) begin // 当流水线出现 last，且指向当前条目
                     if(~scoreboard_match_contd_reg[i] || 
-                    pipeline_o_match_len < `MATCH_PU_WIDTH || // 匹配不连续（已中断）
+                    pipeline_o_match_len < `MATCH_PE_WIDTH || // 匹配不连续（已中断）
                     scoreboard_match_len_reg[i] + pipeline_o_match_len >= `MAX_MATCH_LEN) begin //已达到最大长度
                         scoreboard_done_reg[i] <= 1'b1;
                     end 
@@ -199,7 +199,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                             // 这里没有判断是否饱和，因为如果不饱和，就直接输出了
                             scoreboard_head_addr_reg[i] <= scoreboard_head_addr_reg[i] + MAX_BURST_ADDR_BIAS;
                             scoreboard_history_addr_reg[i] <= scoreboard_history_addr_reg[i] + MAX_BURST_ADDR_BIAS;
-                        end else if(pipeline_o_match_len != `MATCH_PU_WIDTH) begin
+                        end else if(pipeline_o_match_len != `MATCH_PE_WIDTH) begin
                             scoreboard_match_contd_reg[i] <= 1'b0; // 如果匹配长度不饱和，后续的就要被丢弃了
                         end
                     end
