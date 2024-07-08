@@ -18,7 +18,11 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     input wire i_match_resp_ready,
     output wire [`NUM_JOB_PE_LOG2-1:0] o_match_resp_job_pe_id,
     output wire [7:0] o_match_resp_tag,
-    output wire [`MAX_MATCH_LEN_LOG2:0] o_match_resp_match_len
+    output wire [`MAX_MATCH_LEN_LOG2:0] o_match_resp_match_len,
+
+    input wire [`ADDR_WIDTH-1:0] i_write_addr,
+    input wire [`MATCH_PE_WIDTH*8-1:0] i_write_data,
+    input wire i_write_enable
     
 );
 
@@ -102,6 +106,27 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     wire pipeline_o_last;
     wire [SCOREBOARD_ENTRY_INDEX-1:0] pipeline_o_idx;
     wire [`MAX_MATCH_LEN_LOG2:0] pipeline_o_match_len;
+
+    // 实例化流水线
+    match_pe_pipeline #(.SCOREBOARD_ENTRY_INDEX(SCOREBOARD_ENTRY_INDEX), .NBPIPE(3)) pipeline (
+        .clk(clk),
+        .rst_n(rst_n),
+
+        .i_valid(pipeline_i_valid),
+        .i_idx(pipeline_i_idx),
+        .i_last(pipeline_i_last),
+        .i_head_addr(pipeline_i_head_addr),
+        .i_history_addr(pipeline_i_history_addr),
+
+        .o_valid(pipeline_o_valid),
+        .o_last(pipeline_o_last),
+        .o_idx(pipeline_o_idx),
+        .o_match_len(pipeline_o_match_len),
+
+        .i_write_addr(i_write_addr),
+        .i_write_data(i_write_data),
+        .i_write_enable(i_write_enable)
+    );
 
     // scoreboard occupied 状态转换
     always @(posedge clk) begin
