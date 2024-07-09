@@ -29,17 +29,18 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     localparam SCOREBOARD_DEPTH = 4;
     localparam SCOREBOARD_ENTRY_INDEX = $clog2(SCOREBOARD_DEPTH);
 
+    // scoreboard 数据结构
     reg scoreboard_occupied_reg [SCOREBOARD_DEPTH-1:0]; // 0-空闲 1-占用
     reg scoreboard_wait_reg [SCOREBOARD_DEPTH-1:0]; // 0-空闲或已在流水线中 1-等待发送到流水线中
     reg scoreboard_done_reg [SCOREBOARD_DEPTH-1:0]; // 0-未完成 1-已完成
-    reg [`NUM_JOB_PE_LOG2-1:0] scoreboard_job_pe_id_reg [SCOREBOARD_DEPTH-1:0];
-    reg [7:0] scoreboard_tag_reg [SCOREBOARD_DEPTH-1:0];
-    reg [`ADDR_WIDTH-1:0] scoreboard_head_addr_reg [SCOREBOARD_DEPTH-1:0];
-    reg [`ADDR_WIDTH-1:0] scoreboard_history_addr_reg [SCOREBOARD_DEPTH-1:0];
-    reg [`MAX_MATCH_LEN_LOG2:0] scoreboard_match_len_reg [SCOREBOARD_DEPTH-1:0];
+    reg [`NUM_JOB_PE_LOG2-1:0] scoreboard_job_pe_id_reg [SCOREBOARD_DEPTH-1:0]; // 跟踪当前条目的任务来自于哪个 Job PE
+    reg [7:0] scoreboard_tag_reg [SCOREBOARD_DEPTH-1:0]; // Job PE 提供的 Tag，Job PE 使用 Tag 来区分不同的请求，这样就不用把请求的地址传回来去
+    reg [`ADDR_WIDTH-1:0] scoreboard_head_addr_reg [SCOREBOARD_DEPTH-1:0]; // 匹配开始的头地址
+    reg [`ADDR_WIDTH-1:0] scoreboard_history_addr_reg [SCOREBOARD_DEPTH-1:0]; // 匹配开始的历史地址
+    reg [`MAX_MATCH_LEN_LOG2:0] scoreboard_match_len_reg [SCOREBOARD_DEPTH-1:0]; // 记录匹配长度
     reg scoreboard_match_contd_reg [SCOREBOARD_DEPTH-1:0]; // 跟踪匹配是否连续
     
-    // 使用优先编码器选择目的scoreboard的条目
+    // scoreboard 数据结构衍生状态
     reg [SCOREBOARD_ENTRY_INDEX-1:0] first_free_entry;
     reg [SCOREBOARD_ENTRY_INDEX-1:0] first_done_entry;
     reg no_free_entry;
@@ -67,7 +68,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
 
     // 请求接收握手逻辑
     assign o_match_req_ready = !no_free_entry;
-    // 响应发射握手逻辑
+    // 响应发送握手逻辑
     assign o_match_resp_valid = has_done_entry;
     assign o_match_resp_job_pe_id = scoreboard_job_pe_id_reg[first_done_entry];
     assign o_match_resp_tag = scoreboard_tag_reg[first_done_entry];
@@ -85,7 +86,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
             burst_addr_bias_reg <= 0; 
             issue_entry_reg <= 0;
         end else begin
-            if(burst_addr_bias_reg == MAX_BURST_ADDR_BIAS || ~scoreboard_wait_reg[next_issue_entry]) begin
+            if(burst_addr_bias_reg == MAX_BURST_ADDR_BIAS || ~scoreboard_wait_reg[issue_entry_reg]) begin
                 burst_addr_bias_reg <= 0;
                 issue_entry_reg <= next_issue_entry;
             end else begin
@@ -135,14 +136,17 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                 scoreboard_occupied_reg[i] <= 1'b0;
             end else begin
                 if(~scoreboard_occupied_reg[i]) begin
-                    if(i_match_req_valid) begin
+                    if(i_match_req_valid) begin // 有 match 请求来到 match pe，确定该放在哪个条目上
                         if(next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
+                            // 当前条目未占用，并且是下一个要发射的条目，则放到当前条目
                             scoreboard_occupied_reg[i] <= 1'b1;
                         end else if (scoreboard_occupied_reg[next_issue_entry] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry)) begin
+                            // 下一个要发射的条目已经被占用了，并且当前条目是第一个空闲的条目，则放置到当前条目
                             scoreboard_occupied_reg[i] <= 1'b1; 
                         end
                     end
                 end else if (scoreboard_occupied_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry) && scoreboard_done_reg[i]) begin
+                    // 当前条目处于占用并且完成的状态，且是第一个完成的条目，则释放当前条目
                     if(i_match_resp_ready) begin
                         scoreboard_occupied_reg[i] <= 1'b0;
                     end
@@ -159,6 +163,8 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
             end else begin
                 if(~scoreboard_occupied_reg[i]) begin
                     if(i_match_req_valid) begin
+                        // 这里的逻辑和标记 occupied 是一样的
+                        // 因为一个请求进入到 scoreboard 之后，在未处理前就处于等待状态
                         if(next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
                             // 下一个要发射的条目就是我
                             scoreboard_wait_reg[i] <= 1'b1;
@@ -194,9 +200,9 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                     scoreboard_match_len_reg[i] + pipeline_o_match_len >= `MAX_MATCH_LEN) begin //已达到最大长度
                         scoreboard_done_reg[i] <= 1'b1;
                     end 
-                end else if(scoreboard_done_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry)) begin
-                    if(i_match_resp_ready) begin
-                        scoreboard_done_reg[i] <= 1'b0;
+                end else if(scoreboard_done_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry)) begin // 作为第一个完成的条目
+                    if(i_match_resp_ready) begin // 响应已发出
+                        scoreboard_done_reg[i] <= 1'b0; // 清除完成标记
                     end
                 end
             end
