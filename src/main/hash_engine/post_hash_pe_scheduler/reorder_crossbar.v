@@ -7,18 +7,18 @@ module single_crossbar (
 
     input wire input_valid,
     input wire [`NUM_HASH_PE-1:0] input_mask,
-    input wire [`NUM_HASH_PE*`ROW_SIZE-1:0] input_history_valid_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE*`ADDR_WIDTH-1:0] input_history_addr_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] input_meta_match_len_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE-1:0] input_meta_match_can_ext_vec,
+    input wire [`NUM_HASH_PE-1:0] input_history_valid,
+    input wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] input_history_addr,
+    input wire [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] input_meta_match_len,
+    input wire [`NUM_HASH_PE-1:0] input_meta_match_can_ext,
     output wire input_ready,
 
     output wire output_valid,
     output wire output_row_valid,
-    output wire [`ROW_SIZE-1:0] output_history_valid_vec,
-    output wire [`ROW_SIZE*`ADDR_WIDTH-1:0] output_history_addr_vec,
-    output wire [`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len_vec,
-    output wire [`ROW_SIZE-1:0] output_meta_match_can_ext_vec,
+    output wire output_history_valid,
+    output wire [`ADDR_WIDTH-1:0] output_history_addr,
+    output wire [`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len,
+    output wire output_meta_match_can_ext,
     input wire output_ready
 );
 
@@ -28,16 +28,16 @@ module single_crossbar (
     wire stage_ready[CROSSBAR_STAGE+1-1:0];
 
     wire [`NUM_HASH_PE-1:0] stage_in_mask[CROSSBAR_STAGE+1-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] stage_in_history_valid_vec[CROSSBAR_STAGE+1-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE*`ADDR_WIDTH-1:0] stage_in_history_addr_vec[CROSSBAR_STAGE+1-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] stage_in_meta_match_len_vec[CROSSBAR_STAGE+1-1:0];    
-    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] stage_in_meta_match_can_ext_vec[CROSSBAR_STAGE+1-1:0];
+    wire [`NUM_HASH_PE-1:0] stage_in_history_valid[CROSSBAR_STAGE+1-1:0];
+    wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] stage_in_history_addr[CROSSBAR_STAGE+1-1:0];
+    wire [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] stage_in_meta_match_len[CROSSBAR_STAGE+1-1:0];    
+    wire [`NUM_HASH_PE-1:0] stage_in_meta_match_can_ext[CROSSBAR_STAGE+1-1:0];
 
     wire [`NUM_HASH_PE-1:0] stage_mux_mask[CROSSBAR_STAGE-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] stage_mux_history_valid_vec[CROSSBAR_STAGE-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE*`ADDR_WIDTH-1:0] stage_mux_history_addr_vec[CROSSBAR_STAGE-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] stage_mux_meta_match_len_vec[CROSSBAR_STAGE-1:0];
-    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] stage_mux_meta_match_can_ext_vec[CROSSBAR_STAGE-1:0];
+    wire [`NUM_HASH_PE-1:0] stage_mux_history_valid[CROSSBAR_STAGE-1:0];
+    wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] stage_mux_history_addr[CROSSBAR_STAGE-1:0];
+    wire [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] stage_mux_meta_match_len[CROSSBAR_STAGE-1:0];
+    wire [`NUM_HASH_PE-1:0] stage_mux_meta_match_can_ext[CROSSBAR_STAGE-1:0];
 
     genvar i, j;
     generate
@@ -48,28 +48,28 @@ module single_crossbar (
             for(j = 0; j < out_num; j = j+1) begin: stage_mux_gen_block
                 // in -mux1h-> mux -pingpong_reg-> in+1
                 assign stage_mux_mask[i][j] = |(stage_in_mask[i][j * factor +: factor]);
-                mux1h #(.P_CNT(factor), .P_W(`ROW_SIZE)) history_valid_mux1h (
-                    .input_payload_vec(stage_in_history_valid_vec[i][j * factor * `ROW_SIZE +: factor * `ROW_SIZE]),
+                mux1h #(.P_CNT(factor), .P_W(1)) history_valid_mux1h (
+                    .input_payload_vec(stage_in_history_valid[i][j * factor +: factor]),
                     .input_select_vec(stage_in_mask[i][j * factor +: factor]),
-                    .output_payload(stage_mux_history_valid_vec[i][j * `ROW_SIZE +: `ROW_SIZE])
+                    .output_payload(stage_mux_history_valid[i][j])
                 );
-                mux1h #(.P_CNT(factor), .P_W(`ROW_SIZE*`ADDR_WIDTH)) history_addr_mux1h (
-                    .input_payload_vec(stage_in_history_addr_vec[i][j * factor * `ROW_SIZE * `ADDR_WIDTH +: factor * `ROW_SIZE * `ADDR_WIDTH]),
+                mux1h #(.P_CNT(factor), .P_W(`ADDR_WIDTH)) history_addr_mux1h (
+                    .input_payload_vec(stage_in_history_addr[i][j * factor * `ADDR_WIDTH +: factor * `ADDR_WIDTH]),
                     .input_select_vec(stage_in_mask[i][j * factor +: factor]),
-                    .output_payload(stage_mux_history_addr_vec[i][j * `ROW_SIZE * `ADDR_WIDTH +: `ROW_SIZE * `ADDR_WIDTH])
+                    .output_payload(stage_mux_history_addr[i][j * `ADDR_WIDTH +: `ADDR_WIDTH])
                 );
-                mux1h #(.P_CNT(factor), .P_W(`ROW_SIZE*`META_MATCH_LEN_WIDTH)) meta_match_len_mux1h (
-                    .input_payload_vec(stage_in_meta_match_len_vec[i][j * factor * `ROW_SIZE * `META_MATCH_LEN_WIDTH +: factor * `ROW_SIZE * `META_MATCH_LEN_WIDTH]),
+                mux1h #(.P_CNT(factor), .P_W(`META_MATCH_LEN_WIDTH)) meta_match_len_mux1h (
+                    .input_payload_vec(stage_in_meta_match_len[i][j * factor * `META_MATCH_LEN_WIDTH +: factor * `META_MATCH_LEN_WIDTH]),
                     .input_select_vec(stage_in_mask[i][j * factor +: factor]),
-                    .output_payload(stage_mux_meta_match_len_vec[i][j * `ROW_SIZE * `META_MATCH_LEN_WIDTH +: `ROW_SIZE * `META_MATCH_LEN_WIDTH])
+                    .output_payload(stage_mux_meta_match_len[i][j * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH])
                 );
-                mux1h #(.P_CNT(factor), .P_W(`ROW_SIZE)) meta_match_can_ext_mux1h (
-                    .input_payload_vec(stage_in_meta_match_can_ext_vec[i][j * factor * `ROW_SIZE +: factor * `ROW_SIZE]),
+                mux1h #(.P_CNT(factor), .P_W(1)) meta_match_can_ext_mux1h (
+                    .input_payload_vec(stage_in_meta_match_can_ext[i][j * factor +: factor]),
                     .input_select_vec(stage_in_mask[i][j * factor +: factor]),
-                    .output_payload(stage_mux_meta_match_can_ext_vec[i][j * `ROW_SIZE +: `ROW_SIZE])
+                    .output_payload(stage_mux_meta_match_can_ext[i][j])
                 );
             end
-            handshake_slice_reg #(.W(out_num*(1+`ROW_SIZE*(1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1)))
+            handshake_slice_reg #(.W(out_num*(1+(1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1)))
             , .DEPTH(2)) stage_reg (
 
                 .clk(clk),
@@ -77,18 +77,18 @@ module single_crossbar (
 
                 .input_valid(stage_valid[i]),
                 .input_payload({stage_mux_mask[i][0 +: out_num], 
-                stage_mux_history_valid_vec[i][0 +: out_num * `ROW_SIZE], 
-                stage_mux_history_addr_vec[i][0 +: out_num * `ROW_SIZE * `ADDR_WIDTH], 
-                stage_mux_meta_match_len_vec[i][0 +: out_num * `ROW_SIZE * `META_MATCH_LEN_WIDTH],
-                stage_mux_meta_match_can_ext_vec[i][0 +: out_num * `ROW_SIZE]}),
+                stage_mux_history_valid[i][0 +: out_num], 
+                stage_mux_history_addr[i][0 +: out_num * `ADDR_WIDTH], 
+                stage_mux_meta_match_len[i][0 +: out_num * `META_MATCH_LEN_WIDTH],
+                stage_mux_meta_match_can_ext[i][0 +: out_num]}),
                 .input_ready(stage_ready[i]),
 
                 .output_valid(stage_valid[i+1]),
                 .output_payload({stage_in_mask[i+1][0 +: out_num], 
-                stage_in_history_valid_vec[i+1][0 +: out_num * `ROW_SIZE], 
-                stage_in_history_addr_vec[i+1][0 +: out_num * `ROW_SIZE * `ADDR_WIDTH], 
-                stage_in_meta_match_len_vec[i+1][0 +: out_num * `ROW_SIZE * `META_MATCH_LEN_WIDTH],
-                stage_in_meta_match_can_ext_vec[i+1][0 +: out_num * `ROW_SIZE]}),
+                stage_in_history_valid[i+1][0 +: out_num], 
+                stage_in_history_addr[i+1][0 +: out_num * `ADDR_WIDTH], 
+                stage_in_meta_match_len[i+1][0 +: out_num * `META_MATCH_LEN_WIDTH],
+                stage_in_meta_match_can_ext[i+1][0 +: out_num]}),
                 .output_ready(stage_ready[i+1])
 
             );
@@ -97,18 +97,18 @@ module single_crossbar (
     assign stage_valid[0] = input_valid;
     assign input_ready = stage_ready[0];
     assign stage_in_mask[0] = input_mask;
-    assign stage_in_history_valid_vec[0] = input_history_valid_vec;
-    assign stage_in_history_addr_vec[0] = input_history_addr_vec;
-    assign stage_in_meta_match_len_vec[0] = input_meta_match_len_vec;
-    assign stage_in_meta_match_can_ext_vec[0] = input_meta_match_can_ext_vec;
+    assign stage_in_history_valid[0] = input_history_valid;
+    assign stage_in_history_addr[0] = input_history_addr;
+    assign stage_in_meta_match_len[0] = input_meta_match_len;
+    assign stage_in_meta_match_can_ext[0] = input_meta_match_can_ext;
 
     assign output_valid = stage_valid[CROSSBAR_STAGE];
     assign stage_ready[CROSSBAR_STAGE] = output_ready;
     assign output_row_valid = stage_in_mask[CROSSBAR_STAGE][0];
-    assign output_history_valid_vec = stage_in_history_valid_vec[CROSSBAR_STAGE][0 +: `ROW_SIZE];
-    assign output_history_addr_vec = stage_in_history_addr_vec[CROSSBAR_STAGE][0 +: `ROW_SIZE * `ADDR_WIDTH];
-    assign output_meta_match_len_vec = stage_in_meta_match_len_vec[CROSSBAR_STAGE][0 +: `ROW_SIZE * `META_MATCH_LEN_WIDTH];
-    assign output_meta_match_can_ext_vec = stage_in_meta_match_can_ext_vec[CROSSBAR_STAGE][0 +: `ROW_SIZE];
+    assign output_history_valid = stage_in_history_valid[CROSSBAR_STAGE][0];
+    assign output_history_addr = stage_in_history_addr[CROSSBAR_STAGE][0 +:  `ADDR_WIDTH];
+    assign output_meta_match_len = stage_in_meta_match_len[CROSSBAR_STAGE][0 +:  `META_MATCH_LEN_WIDTH];
+    assign output_meta_match_can_ext = stage_in_meta_match_can_ext[CROSSBAR_STAGE][0];
 
 endmodule
 
@@ -118,22 +118,22 @@ module reorder_crossbar (
 
     input wire input_valid,
     input wire [`NUM_HASH_PE-1:0] input_mask,
-    input wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] input_addr_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE-1:0] input_history_valid_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE*`ADDR_WIDTH-1:0] input_history_addr_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] input_meta_match_len_vec,
-    input wire [`NUM_HASH_PE*`ROW_SIZE-1:0] input_meta_match_can_ext_vec,
-    input wire [`NUM_HASH_PE-1:0] input_delim_vec,
+    input wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] input_addr,
+    input wire [`NUM_HASH_PE-1:0] input_history_valid,
+    input wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] input_history_addr,
+    input wire [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] input_meta_match_len,
+    input wire [`NUM_HASH_PE-1:0] input_meta_match_can_ext,
+    input wire [`NUM_HASH_PE-1:0] input_delim,
     input wire [`HASH_ISSUE_WIDTH*8-1:0] input_data,
     output wire input_ready,
 
     output wire output_valid,
     output wire [`ADDR_WIDTH-1:0] output_head_addr,
     output wire [`HASH_ISSUE_WIDTH-1:0] output_row_valid,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_history_valid_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] output_history_addr_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_meta_match_can_ext_vec,
+    output wire [`HASH_ISSUE_WIDTH-1:0] output_history_valid,
+    output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] output_history_addr,
+    output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len,
+    output wire [`HASH_ISSUE_WIDTH-1:0] output_meta_match_can_ext,
     output wire [`HASH_ISSUE_WIDTH*8-1:0] output_data,
     output wire output_delim,
     input wire output_ready
@@ -146,10 +146,10 @@ module reorder_crossbar (
     wire mask_stage_valid;
     wire [`HASH_ISSUE_WIDTH*`NUM_HASH_PE-1:0] mask_stage_mask;
     wire [`ADDR_WIDTH-1:0] mask_stage_head_addr;
-    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] mask_stage_history_valid_vec;
-    wire [`NUM_HASH_PE*`ROW_SIZE*`ADDR_WIDTH-1:0] mask_stage_history_addr_vec;
-    wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] mask_stage_meta_match_len_vec;
-    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] mask_stage_meta_match_can_ext_vec;
+    wire [`NUM_HASH_PE-1:0] mask_stage_history_valid;
+    wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] mask_stage_history_addr;
+    wire [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] mask_stage_meta_match_len;
+    wire [`NUM_HASH_PE-1:0] mask_stage_meta_match_can_ext;
     wire mask_stage_delim;
     wire [`HASH_ISSUE_WIDTH*8-1:0] mask_stage_data;
     wire mask_stage_ready;
@@ -159,10 +159,10 @@ module reorder_crossbar (
        mask_stage_head_addr_input = 0;
        mask_stage_delim_input = 0;
        for(i = 0; i < `NUM_HASH_PE; i = i+1) begin : crossbar_mask_outter_loop
-            mask_stage_head_addr_input = mask_stage_head_addr_input | {`ADDR_WIDTH{input_mask[i]}} & input_addr_vec[i * `ADDR_WIDTH +: `ADDR_WIDTH];
-            mask_stage_delim_input = mask_stage_delim_input | (input_mask[i] & input_delim_vec[i]);
+            mask_stage_head_addr_input = mask_stage_head_addr_input | {`ADDR_WIDTH{input_mask[i]}} & input_addr[i * `ADDR_WIDTH +: `ADDR_WIDTH];
+            mask_stage_delim_input = mask_stage_delim_input | (input_mask[i] & input_delim[i]);
             for(j = 0; j < `HASH_ISSUE_WIDTH; j = j+1) begin : crossbar_mask_inner_loop
-                mask_stage_mask_input[j * `NUM_HASH_PE + i] = input_mask[i] && (input_addr_vec[i * `ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2] == j);
+                mask_stage_mask_input[j * `NUM_HASH_PE + i] = input_mask[i] && (input_addr[i * `ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2] == j[`HASH_ISSUE_WIDTH_LOG2-1:0]);
             end
        end
        mask_stage_head_addr_input = mask_stage_head_addr_input & {{(`ADDR_WIDTH-`HASH_ISSUE_WIDTH_LOG2){1'b1}}, {`HASH_ISSUE_WIDTH_LOG2{1'b0}}}; 
@@ -170,23 +170,23 @@ module reorder_crossbar (
 
     forward_reg #(.W(`ADDR_WIDTH + 
     `NUM_HASH_PE * `HASH_ISSUE_WIDTH + 
-    `NUM_HASH_PE*(`ROW_SIZE*(1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1)) + 1 + 
+    `NUM_HASH_PE*(1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1) + 1 + 
     `HASH_ISSUE_WIDTH*8)) mask_stage_reg (
         .clk(clk),
         .rst_n(rst_n),
         .input_valid(input_valid),
         .input_payload({mask_stage_head_addr_input, 
                         mask_stage_mask_input,
-                        input_history_valid_vec, input_history_addr_vec, 
-                        input_meta_match_len_vec, input_meta_match_can_ext_vec, 
+                        input_history_valid, input_history_addr, 
+                        input_meta_match_len, input_meta_match_can_ext, 
                         mask_stage_delim_input, 
                         input_data}),
         .input_ready(input_ready),
         .output_valid(mask_stage_valid),
         .output_payload({mask_stage_head_addr, 
                         mask_stage_mask, 
-                        mask_stage_history_valid_vec, mask_stage_history_addr_vec,
-                        mask_stage_meta_match_len_vec, mask_stage_meta_match_can_ext_vec,
+                        mask_stage_history_valid, mask_stage_history_addr,
+                        mask_stage_meta_match_len, mask_stage_meta_match_can_ext,
                         mask_stage_delim,
                         mask_stage_data
                         }),
@@ -198,10 +198,10 @@ module reorder_crossbar (
     wire [`HASH_ISSUE_WIDTH-1:0] crossbar_input_ready, crossbar_output_valid;
 
     wire [`HASH_ISSUE_WIDTH-1:0] crossbar_output_row_valid;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] crossbar_output_history_valid_vec;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] crossbar_output_history_addr_vec;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] crossbar_output_meta_match_len_vec;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] crossbar_output_meta_match_can_ext_vec;
+    wire [`HASH_ISSUE_WIDTH-1:0] crossbar_output_history_valid;
+    wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] crossbar_output_history_addr;
+    wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] crossbar_output_meta_match_len;
+    wire [`HASH_ISSUE_WIDTH-1:0] crossbar_output_meta_match_can_ext;
 
 
     wire crossbar_output_ready;
@@ -212,18 +212,18 @@ module reorder_crossbar (
 
         .input_valid(mask_stage_valid),
         .input_mask(mask_stage_mask),
-        .input_history_valid_vec(mask_stage_history_valid_vec),
-        .input_history_addr_vec(mask_stage_history_addr_vec),
-        .input_meta_match_len_vec(mask_stage_meta_match_len_vec),
-        .input_meta_match_can_ext_vec(mask_stage_meta_match_can_ext_vec),
+        .input_history_valid(mask_stage_history_valid),
+        .input_history_addr(mask_stage_history_addr),
+        .input_meta_match_len(mask_stage_meta_match_len),
+        .input_meta_match_can_ext(mask_stage_meta_match_can_ext),
         .input_ready(crossbar_input_ready),
 
         .output_valid(crossbar_output_valid),
         .output_row_valid(crossbar_output_row_valid),
-        .output_history_valid_vec(crossbar_output_history_valid_vec),
-        .output_history_addr_vec(crossbar_output_history_addr_vec),
-        .output_meta_match_len_vec(crossbar_output_meta_match_len_vec),
-        .output_meta_match_can_ext_vec(crossbar_output_meta_match_can_ext_vec),
+        .output_history_valid(crossbar_output_history_valid),
+        .output_history_addr(crossbar_output_history_addr),
+        .output_meta_match_len(crossbar_output_meta_match_len),
+        .output_meta_match_can_ext(crossbar_output_meta_match_can_ext),
         .output_ready(crossbar_output_ready)
     );
 
@@ -284,19 +284,22 @@ module reorder_crossbar (
         
     // end
 
-    pingpong_reg #(.W(`ADDR_WIDTH+`HASH_ISSUE_WIDTH*(1+`ROW_SIZE*(1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1))+1+`HASH_ISSUE_WIDTH*8)) stage_reg (
+    pingpong_reg #(.W(`ADDR_WIDTH+`HASH_ISSUE_WIDTH*(1+(1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1))+1+`HASH_ISSUE_WIDTH*8)) stage_reg (
         .clk(clk),
         .rst_n(rst_n),
         .input_valid(crossbar_bypass_valid[CROSSBAR_STAGE]),
         .input_payload({crossbar_bypass_head_addr[CROSSBAR_STAGE], 
         crossbar_output_row_valid,
-        crossbar_output_history_valid_vec, crossbar_output_history_addr_vec,
-        crossbar_output_meta_match_len_vec, crossbar_output_meta_match_can_ext_vec,
+        crossbar_output_history_valid, crossbar_output_history_addr,
+        crossbar_output_meta_match_len, crossbar_output_meta_match_can_ext,
         crossbar_bypass_delim[CROSSBAR_STAGE],
         crossbar_bypass_data[CROSSBAR_STAGE]}),
         .input_ready(crossbar_output_ready),
         .output_valid(output_valid),
-        .output_payload({output_head_addr, output_row_valid, output_history_valid_vec, output_history_addr_vec, output_meta_match_len_vec, output_meta_match_can_ext_vec, output_delim, output_data}),
+        .output_payload({output_head_addr, 
+        output_row_valid, output_history_valid, 
+        output_history_addr, output_meta_match_len, 
+        output_meta_match_can_ext, output_delim, output_data}),
         .output_ready(output_ready)
     );
     

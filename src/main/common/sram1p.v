@@ -15,10 +15,10 @@ module sram1p #(parameter WORD_SIZE = 8,
 
     always @(posedge clk) begin
         if (write_enable) begin
-            memory[address] <= `TD write_data;
+            memory[address] <= write_data;
         end
         else if (read_enable) begin
-            read_data_reg <= `TD memory[address];
+            read_data_reg <= memory[address];
         end
     end
 

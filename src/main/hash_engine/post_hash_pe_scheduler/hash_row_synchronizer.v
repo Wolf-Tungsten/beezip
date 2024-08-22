@@ -21,21 +21,20 @@ module hash_row_synchronizer (
     input wire input_valid,
     input wire [`ADDR_WIDTH-1:0] input_head_addr,
     input wire [`HASH_ISSUE_WIDTH-1:0] input_row_valid,
-    input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] input_history_valid_vec,
-    input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] input_history_addr_vec, 
-    input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] input_meta_match_len_vec,
-    input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] input_meta_match_can_ext_vec,
+    input wire [`HASH_ISSUE_WIDTH-1:0] input_history_valid,
+    input wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] input_history_addr, 
+    input wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] input_meta_match_len,
+    input wire [`HASH_ISSUE_WIDTH-1:0] input_meta_match_can_ext,
     input wire [`HASH_ISSUE_WIDTH*8-1:0] input_data,
     input wire input_delim,
     output reg input_ready,
 
     output wire output_valid,
     output wire [`ADDR_WIDTH-1:0] output_head_addr,
-    output wire [`HASH_ISSUE_WIDTH-1:0] output_row_valid,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_history_valid_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] output_history_addr_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_meta_match_can_ext_vec, 
+    output wire [`HASH_ISSUE_WIDTH-1:0] output_history_valid,
+    output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] output_history_addr,
+    output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len,
+    output wire [`HASH_ISSUE_WIDTH-1:0] output_meta_match_can_ext, 
     output wire [`HASH_ISSUE_WIDTH*8-1:0] output_data,
     output wire output_delim,
     input wire output_ready
@@ -77,48 +76,48 @@ module hash_row_synchronizer (
         .q(row_valid_reg_q)
     );
 
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] history_valid_vec_reg_d;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] history_valid_vec_reg_q;
-    reg history_valid_vec_reg_en;
-    dff #(.W(`HASH_ISSUE_WIDTH*`ROW_SIZE), .RST(1), .EN(1), .RST_V(0)) history_valid_vec_reg (
+    reg [`HASH_ISSUE_WIDTH-1:0] history_valid_reg_d;
+    wire [`HASH_ISSUE_WIDTH-1:0] history_valid_reg_q;
+    reg history_valid_reg_en;
+    dff #(.W(`HASH_ISSUE_WIDTH), .RST(1), .EN(1), .RST_V(0)) history_valid_reg (
         .clk(clk),
         .rst_n(rst_n),
-        .en(history_valid_vec_reg_en),
-        .d(history_valid_vec_reg_d),
-        .q(history_valid_vec_reg_q)
+        .en(history_valid_reg_en),
+        .d(history_valid_reg_d),
+        .q(history_valid_reg_q)
     );
 
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] history_addr_vec_reg_d;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] history_addr_vec_reg_q;
-    reg history_addr_vec_reg_en;
-    dff #(.W(`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH), .RST(1), .EN(1), .RST_V(0)) history_addr_vec_reg (
+    reg [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] history_addr_reg_d;
+    wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] history_addr_reg_q;
+    reg history_addr_reg_en;
+    dff #(.W(`HASH_ISSUE_WIDTH*`ADDR_WIDTH), .RST(1), .EN(1), .RST_V(0)) history_addr_reg (
         .clk(clk),
         .rst_n(rst_n),
-        .en(history_addr_vec_reg_en),
-        .d(history_addr_vec_reg_d),
-        .q(history_addr_vec_reg_q)
+        .en(history_addr_reg_en),
+        .d(history_addr_reg_d),
+        .q(history_addr_reg_q)
     );
 
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_vec_d;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_vec_q;
-    reg meta_match_len_vec_en;
-    dff #(.W(`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH), .RST(1), .EN(1), .RST_V(0)) meta_match_len_vec (
+    reg [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_d;
+    wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_q;
+    reg meta_match_len_en;
+    dff #(.W(`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH), .RST(1), .EN(1), .RST_V(0)) meta_match_len_reg (
         .clk(clk),
         .rst_n(rst_n),
-        .en(meta_match_len_vec_en),
-        .d(meta_match_len_vec_d),
-        .q(meta_match_len_vec_q)
+        .en(meta_match_len_en),
+        .d(meta_match_len_d),
+        .q(meta_match_len_q)
     );
 
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] meta_match_can_ext_vec_d;
-    wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] meta_match_can_ext_vec_q;
-    reg meta_match_can_ext_vec_en;
-    dff #(.W(`HASH_ISSUE_WIDTH*`ROW_SIZE), .RST(1), .EN(1), .RST_V(0)) meta_match_can_ext_vec (
+    reg [`HASH_ISSUE_WIDTH-1:0] meta_match_can_ext_d;
+    wire [`HASH_ISSUE_WIDTH-1:0] meta_match_can_ext_q;
+    reg meta_match_can_ext_en;
+    dff #(.W(`HASH_ISSUE_WIDTH), .RST(1), .EN(1), .RST_V(0)) meta_match_can_ext_reg (
         .clk(clk),
         .rst_n(rst_n),
-        .en(meta_match_can_ext_vec_en),
-        .d(meta_match_can_ext_vec_d),
-        .q(meta_match_can_ext_vec_q)
+        .en(meta_match_can_ext_en),
+        .d(meta_match_can_ext_d),
+        .q(meta_match_can_ext_q)
     );
 
     reg [`ADDR_WIDTH+1+`HASH_ISSUE_WIDTH*8-1:0] head_addr_data_delim_reg_d;
@@ -135,20 +134,20 @@ module hash_row_synchronizer (
     reg stage_reg_valid;
     reg [`ADDR_WIDTH-1:0] stage_reg_head_addr;
     reg [`HASH_ISSUE_WIDTH-1:0] stage_reg_row_valid;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] stage_reg_history_valid_vec;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] stage_reg_history_addr_vec;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] stage_reg_meta_match_len_vec;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] stage_reg_meta_match_can_ext_vec; 
+    reg [`HASH_ISSUE_WIDTH-1:0] stage_reg_history_valid;
+    reg [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] stage_reg_history_addr;
+    reg [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] stage_reg_meta_match_len;
+    reg [`HASH_ISSUE_WIDTH-1:0] stage_reg_meta_match_can_ext; 
     reg [`HASH_ISSUE_WIDTH*8-1:0] stage_reg_data;
     reg stage_reg_delim;
     wire stage_reg_ready;
 
     // intermediate logics
     reg [`HASH_ISSUE_WIDTH-1:0] combined_row_valid;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] combined_history_valid_vec;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] combined_history_addr_vec;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] combined_meta_match_len_vec;
-    reg [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] combined_meta_match_can_ext_vec; 
+    reg [`HASH_ISSUE_WIDTH-1:0] combined_history_valid;
+    reg [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] combined_history_addr;
+    reg [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] combined_meta_match_len;
+    reg [`HASH_ISSUE_WIDTH-1:0] combined_meta_match_can_ext; 
     reg need_flush;
     reg [`HASH_ISSUE_WIDTH-1:0] combined_real_row_valid, flush_real_row_valid;
 
@@ -156,12 +155,12 @@ module hash_row_synchronizer (
         integer i;
         for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1)begin
             combined_row_valid[i] = row_valid_reg_q[i] | input_row_valid[i];
-            combined_history_valid_vec[i*`ROW_SIZE +: `ROW_SIZE] = history_valid_vec_reg_q[i*`ROW_SIZE +: `ROW_SIZE] | ({`ROW_SIZE{input_row_valid[i]}} & input_history_valid_vec[i*`ROW_SIZE +: `ROW_SIZE]);
-            combined_history_addr_vec[i*`ROW_SIZE*`ADDR_WIDTH +: `ROW_SIZE*`ADDR_WIDTH] = history_addr_vec_reg_q[i*`ROW_SIZE*`ADDR_WIDTH +: `ROW_SIZE*`ADDR_WIDTH] | ({(`ROW_SIZE * `ADDR_WIDTH){input_row_valid[i]}} & input_history_addr_vec[i*`ROW_SIZE*`ADDR_WIDTH +: `ROW_SIZE*`ADDR_WIDTH]);
-            combined_meta_match_len_vec[i*`ROW_SIZE*`META_MATCH_LEN_WIDTH +: `ROW_SIZE*`META_MATCH_LEN_WIDTH] = meta_match_len_vec_q[i*`ROW_SIZE*`META_MATCH_LEN_WIDTH +: `ROW_SIZE*`META_MATCH_LEN_WIDTH] | ({(`ROW_SIZE * `META_MATCH_LEN_WIDTH){input_row_valid[i]}} & input_meta_match_len_vec[i*`ROW_SIZE*`META_MATCH_LEN_WIDTH +: `ROW_SIZE*`META_MATCH_LEN_WIDTH]);
-            combined_meta_match_can_ext_vec[i*`ROW_SIZE +: `ROW_SIZE] = meta_match_can_ext_vec_q[i*`ROW_SIZE +: `ROW_SIZE] | ({`ROW_SIZE{input_row_valid[i]}} & input_meta_match_can_ext_vec[i*`ROW_SIZE +: `ROW_SIZE]);
-            combined_real_row_valid[i] = |combined_history_valid_vec[i*`ROW_SIZE +: `ROW_SIZE];
-            flush_real_row_valid[i] = |history_valid_vec_reg_q[i*`ROW_SIZE +: `ROW_SIZE];
+            combined_history_valid[i] = history_valid_reg_q[i] | (input_row_valid[i] & input_history_valid[i]);
+            combined_history_addr[i*`ADDR_WIDTH +: `ADDR_WIDTH] = history_addr_reg_q[i*`ADDR_WIDTH +: `ADDR_WIDTH] | ({(`ADDR_WIDTH){input_row_valid[i]}} & input_history_addr[i*`ADDR_WIDTH +: `ADDR_WIDTH]);
+            combined_meta_match_len[i*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] = meta_match_len_q[i*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] | ({(`META_MATCH_LEN_WIDTH){input_row_valid[i]}} & input_meta_match_len[i*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH]);
+            combined_meta_match_can_ext[i] = meta_match_can_ext_q[i] | (input_row_valid[i] & input_meta_match_can_ext[i]);
+            combined_real_row_valid[i] = combined_history_valid[i];
+            flush_real_row_valid[i] = history_valid_reg_q[i];
         end
         need_flush = (trans_cnt_reg_q + 1 >= cfg_max_queued_req_num) | (&combined_row_valid);
         // avoid latch, give default value
@@ -171,23 +170,23 @@ module hash_row_synchronizer (
         row_valid_reg_en = 1'b0;
         trans_cnt_reg_d = trans_cnt_reg_q + 1'b1;
         trans_cnt_reg_en = 1'b0;
-        history_valid_vec_reg_d = combined_history_valid_vec;
-        history_valid_vec_reg_en = 1'b0;
-        history_addr_vec_reg_d = combined_history_addr_vec;
-        history_addr_vec_reg_en = 1'b0;
-        meta_match_len_vec_d = combined_meta_match_len_vec;
-        meta_match_len_vec_en = 1'b0;
-        meta_match_can_ext_vec_d = combined_meta_match_can_ext_vec;
-        meta_match_can_ext_vec_en = 1'b0;
+        history_valid_reg_d = combined_history_valid;
+        history_valid_reg_en = 1'b0;
+        history_addr_reg_d = combined_history_addr;
+        history_addr_reg_en = 1'b0;
+        meta_match_len_d = combined_meta_match_len;
+        meta_match_len_en = 1'b0;
+        meta_match_can_ext_d = combined_meta_match_can_ext;
+        meta_match_can_ext_en = 1'b0;
         head_addr_data_delim_reg_d = {input_head_addr, input_data, input_delim};
         head_addr_data_delim_reg_en = 1'b0;
         stage_reg_valid = 1'b0;
         stage_reg_head_addr = input_head_addr;
         stage_reg_row_valid = combined_real_row_valid;
-        stage_reg_history_valid_vec = combined_history_valid_vec;
-        stage_reg_history_addr_vec = combined_history_addr_vec;
-        stage_reg_meta_match_len_vec = combined_meta_match_len_vec;
-        stage_reg_meta_match_can_ext_vec = combined_meta_match_can_ext_vec;
+        stage_reg_history_valid = combined_history_valid;
+        stage_reg_history_addr = combined_history_addr;
+        stage_reg_meta_match_len = combined_meta_match_len;
+        stage_reg_meta_match_can_ext = combined_meta_match_can_ext;
         stage_reg_data = input_data;
         stage_reg_delim = input_delim;
         input_ready = 1'b0;
@@ -200,26 +199,26 @@ module hash_row_synchronizer (
                         stage_reg_valid = 1'b1;
                         if(stage_reg_ready) begin
                             // 握手成功，清空 buffer 和计数器
-                            row_valid_reg_d = 0;
+                            row_valid_reg_d = '0;
                             row_valid_reg_en = 1'b1;
-                            trans_cnt_reg_d = 0;
+                            trans_cnt_reg_d = '0;
                             trans_cnt_reg_en = 1'b1;
-                            history_valid_vec_reg_d = 0;
-                            history_valid_vec_reg_en = 1'b1;
-                            history_addr_vec_reg_d = 0;
-                            history_addr_vec_reg_en = 1'b1;
-                            meta_match_len_vec_d = 0;
-                            meta_match_len_vec_en = 1'b1;
-                            meta_match_can_ext_vec_d = 0;
-                            meta_match_can_ext_vec_en = 1'b1;
+                            history_valid_reg_d = '0;
+                            history_valid_reg_en = 1'b1;
+                            history_addr_reg_d = '0;
+                            history_addr_reg_en = 1'b1;
+                            meta_match_len_d = '0;
+                            meta_match_len_en = 1'b1;
+                            meta_match_can_ext_d = '0;
+                            meta_match_can_ext_en = 1'b1;
                         end else begin
                             // 握手不成功，保存当前请求，切换到 flush 状态
                             row_valid_reg_en = 1'b1;
                             trans_cnt_reg_en = 1'b1;
-                            history_valid_vec_reg_en = 1'b1;
-                            history_addr_vec_reg_en = 1'b1;
-                            meta_match_len_vec_en = 1'b1;
-                            meta_match_can_ext_vec_en = 1'b1;
+                            history_valid_reg_en = 1'b1;
+                            history_addr_reg_en = 1'b1;
+                            meta_match_len_en = 1'b1;
+                            meta_match_can_ext_en = 1'b1;
                             head_addr_data_delim_reg_en = 1'b1;
                             next_state[S_FLUSH] = 1'b1;
                             state_reg_en = 1'b1;
@@ -227,10 +226,10 @@ module hash_row_synchronizer (
                     end else begin
                         // 保存当前请求到 buffer 中
                         row_valid_reg_en = 1'b1;
-                        history_valid_vec_reg_en = 1'b1;
-                        history_addr_vec_reg_en = 1'b1;
-                        meta_match_len_vec_en = 1'b1;
-                        meta_match_can_ext_vec_en = 1'b1;
+                        history_valid_reg_en = 1'b1;
+                        history_addr_reg_en = 1'b1;
+                        meta_match_len_en = 1'b1;
+                        meta_match_can_ext_en = 1'b1;
                         trans_cnt_reg_en = 1'b1;
                         head_addr_data_delim_reg_en = 1'b1;
                     end
@@ -241,22 +240,22 @@ module hash_row_synchronizer (
                 stage_reg_valid = 1'b1;
                 { stage_reg_head_addr, stage_reg_data, stage_reg_delim } = head_addr_data_delim_reg_q;
                 stage_reg_row_valid = flush_real_row_valid;
-                stage_reg_history_valid_vec = history_valid_vec_reg_q;
-                stage_reg_history_addr_vec = history_addr_vec_reg_q;
+                stage_reg_history_valid = history_valid_reg_q;
+                stage_reg_history_addr = history_addr_reg_q;
                 if(stage_reg_ready) begin
                     // 清空 buffer 和计数器，返回 recv 状态
-                    row_valid_reg_d = 0;
+                    row_valid_reg_d = '0;
                     row_valid_reg_en = 1'b1;
-                    trans_cnt_reg_d = 0;
+                    trans_cnt_reg_d = '0;
                     trans_cnt_reg_en = 1'b1;
-                    history_valid_vec_reg_d = 0;
-                    history_valid_vec_reg_en = 1'b1;
-                    history_addr_vec_reg_d = 0;
-                    history_addr_vec_reg_en = 1'b1;
-                    meta_match_len_vec_d = 0;
-                    meta_match_len_vec_en = 1'b1;
-                    meta_match_can_ext_vec_d = 0;
-                    meta_match_can_ext_vec_en = 1'b1;
+                    history_valid_reg_d = '0;
+                    history_valid_reg_en = 1'b1;
+                    history_addr_reg_d = '0;
+                    history_addr_reg_en = 1'b1;
+                    meta_match_len_d = '0;
+                    meta_match_len_en = 1'b1;
+                    meta_match_can_ext_d = '0;
+                    meta_match_can_ext_en = 1'b1;
                     next_state[S_RECV] = 1'b1;
                     state_reg_en = 1'b1;
                 end
@@ -269,27 +268,26 @@ module hash_row_synchronizer (
         state_reg_d = next_state;
     end
 
-    forward_reg #(.W(`ADDR_WIDTH+`HASH_ISSUE_WIDTH*(1+`ROW_SIZE*(1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1))+1+`HASH_ISSUE_WIDTH*8)) stage_reg (
+    forward_reg #(.W(`ADDR_WIDTH+`HASH_ISSUE_WIDTH*((1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1))+1+`HASH_ISSUE_WIDTH*8)) stage_reg (
         .clk(clk),
         .rst_n(rst_n),
         .input_valid(stage_reg_valid),
         .input_payload({stage_reg_head_addr, 
-                        stage_reg_row_valid, 
-                        stage_reg_history_valid_vec, 
-                        stage_reg_history_addr_vec, 
-                        stage_reg_meta_match_len_vec, 
-                        stage_reg_meta_match_can_ext_vec, 
+                        //stage_reg_row_valid, 
+                        stage_reg_history_valid, 
+                        stage_reg_history_addr, 
+                        stage_reg_meta_match_len, 
+                        stage_reg_meta_match_can_ext, 
                         stage_reg_data, 
                         stage_reg_delim}),
         .input_ready(stage_reg_ready),
 
         .output_valid(output_valid),
         .output_payload({output_head_addr, 
-                         output_row_valid, 
-                         output_history_valid_vec,
-                         output_history_addr_vec, 
-                         output_meta_match_len_vec,
-                         output_meta_match_can_ext_vec,
+                         output_history_valid,
+                         output_history_addr, 
+                         output_meta_match_len,
+                         output_meta_match_can_ext,
                          output_data, 
                          output_delim}),
         .output_ready(output_ready)

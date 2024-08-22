@@ -490,7 +490,7 @@ module hash_pe_array(
                         .can_ext(meta_match_can_ext_vec[g_row*`ROW_SIZE + g_col])
                     );
                 assign meta_match_history_valid_vec[g_row*`ROW_SIZE + g_col] = meta_mask_buffer_output_history_valid_vec[g_row*`ROW_SIZE + g_col] && 
-                (meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] != 0);
+                (meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] >= `MIN_MATCH_LEN);
                 // always @(posedge clk) begin
                 //     if(p_rst_n) begin
                 //         if(meta_mask_buffer_output_valid && meta_mask_buffer_output_ready) begin

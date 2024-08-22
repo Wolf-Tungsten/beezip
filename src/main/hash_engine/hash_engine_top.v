@@ -14,10 +14,10 @@ module hash_engine_top(
     output wire output_valid,
     output wire [`ADDR_WIDTH-1:0] output_head_addr,
     output wire [`HASH_ISSUE_WIDTH-1:0] output_row_valid,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_history_valid_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] output_history_addr_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len_vec,
-    output wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] output_meta_match_can_ext_vec,
+    output wire [`HASH_ISSUE_WIDTH-1:0] output_history_valid,
+    output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] output_history_addr,
+    output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len,
+    output wire [`HASH_ISSUE_WIDTH-1:0] output_meta_match_can_ext,
     output wire [`HASH_ISSUE_WIDTH*8-1:0] output_data,
     output wire output_delim,
     input wire output_ready
@@ -167,11 +167,10 @@ module hash_engine_top(
         
         .output_valid(output_valid),
         .output_head_addr(output_head_addr),
-        .output_row_valid(output_row_valid),
-        .output_history_valid_vec(output_history_valid_vec),
-        .output_history_addr_vec(output_history_addr_vec),
-        .output_meta_match_len_vec(output_meta_match_len_vec),
-        .output_meta_match_can_ext_vec(output_meta_match_can_ext_vec),
+        .output_history_valid(output_history_valid),
+        .output_history_addr(output_history_addr),
+        .output_meta_match_len(output_meta_match_len),
+        .output_meta_match_can_ext(output_meta_match_can_ext),
         .output_data(output_data),
         .output_delim(output_delim),
         .output_ready(output_ready)
@@ -179,13 +178,11 @@ module hash_engine_top(
 
     `ifdef HASH_RESULT_LOG
         always @(posedge clk) begin
-            integer log_i, log_j;
+            integer log_i;
             if(output_valid && output_ready) begin
                 for(log_i = 0; log_i < `HASH_ISSUE_WIDTH; log_i = log_i + 1) begin
-                    for(log_j = 0; log_j < `ROW_SIZE; log_j = log_j + 1) begin
-                        if(output_history_valid_vec[log_i * `ROW_SIZE + log_j]) begin
-                            $display("[HashResult] head_addr=%d, hist_addr=%d, slot_idx=%d", output_head_addr + log_i, output_history_addr_vec[log_i * `ROW_SIZE * `ADDR_WIDTH + log_j * `ADDR_WIDTH +: `ADDR_WIDTH], log_j);
-                        end
+                    if(output_history_valid_vec[log_i]) begin
+                        $display("[HashResult] head_addr=%d, hist_addr=%d", output_head_addr + log_i, output_history_addr_vec[log_i * `ADDR_WIDTH  +: `ADDR_WIDTH]);
                     end
                 end
             end

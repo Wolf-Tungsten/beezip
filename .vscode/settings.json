@@ -1,4 +1,5 @@
 {
     "verilog.linting.verilator.includePath": [],
-    "verilog.linting.verilator.arguments": "-F beezip.f"
+    "verilog.linting.verilator.arguments": "-F beezip.f",
+    "verilog.formatting.verilogHDL.formatter": "verible-verilog-format"
 }
