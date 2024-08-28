@@ -13,7 +13,6 @@ module hash_engine_top(
 
     output wire output_valid,
     output wire [`ADDR_WIDTH-1:0] output_head_addr,
-    output wire [`HASH_ISSUE_WIDTH-1:0] output_row_valid,
     output wire [`HASH_ISSUE_WIDTH-1:0] output_history_valid,
     output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] output_history_addr,
     output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len,
