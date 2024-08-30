@@ -2,44 +2,143 @@
 `include "util.vh"
 `include "log.vh"
 
-module job_pe #(parameter MATCH_PE_IDX = 0)(
-        input wire clk,
-        input wire rst_n,
+module job_pe #(
+    parameter MATCH_PE_IDX = 0
+) (
+    input wire clk,
+    input wire rst_n,
 
-        // input hash result port
-        input wire i_hash_result_valid,
-        input wire [`ADDR_WIDTH-1:0] i_head_addr,
-        input wire [`HASH_ISSUE_WIDTH-1:0] i_row_valid,
-        input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] i_history_valid,
-        input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`ADDR_WIDTH-1:0] i_history_addr,
-        input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] i_meta_match_len,
-        input wire [`HASH_ISSUE_WIDTH*`ROW_SIZE-1:0] i_meta_match_can_ext,
-        output wire o_hash_result_ready,
+    input wire hash_batch_valid,
+    input wire [`ADDR_WIDTH-1:0] hash_batch_head_addr,
+    input wire [`HASH_ISSUE_WIDTH-1:0] hash_batch_history_valid,
+    input wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] hash_batch_history_addr,
+    input wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] hash_batch_meta_match_len,
+    input wire [`HASH_ISSUE_WIDTH-1:0] hash_batch_meta_match_can_ext,
+    input wire hash_batch_delim,
+    output wire hash_batch_ready,
 
-        // output seq port
-        output wire o_seq_valid,
-        output wire [`JOB_LEN_LOG2+1-1:0] o_seq_lit_len,
-        output wire [`MAX_MATCH_LEN_LOG2+1-1:0] o_seq_match_len,
-        output wire [`ADDR_WIDTH-1:0] o_seq_offset,
-        output wire o_seq_end_of_job,
-        output wire o_seq_overlapped,
-        output wire [`JOB_LEN_LOG2+1-1:0] o_seq_overlap_len,
-        input wire i_seq_ready,
-        
-        // match request port
-        output wire o_match_req_valid,
-        output wire [`ADDR_WIDTH-1:0] o_match_req_head_addr,
-        output wire [`ADDR_WIDTH-1:0] o_match_req_history_addr,
-        input wire  i_match_req_ready,
+    // output seq port
+    output wire seq_valid,
+    output wire [`SEQ_LL_BITS-1:0] seq_ll,
+    output wire [`SEQ_ML_BITS-1:0] seq_ml,
+    output wire [`SEQ_OFFSET_BITS-1:0] seq_offset,
+    output wire seq_eoj,
+    output wire [`SEQ_ML_BITS-1:0] seq_overlap_len,
+    output wire seq_delim,
+    input wire seq_ready,
 
-        // match resp port
-        input wire i_match_resp_valid,
-        input wire [`ROW_SIZE_LOG2-1:0] i_match_req_slot_id,
-        input wire [`MAX_MATCH_LEN_LOG2+1-1:0] i_match_resp_len,
-        output wire o_match_resp_ready
-    );
+    // match request port
+    output wire match_req_valid,
+    output wire [`ADDR_WIDTH-1:0] match_req_head_addr,
+    output wire [`ADDR_WIDTH-1:0] match_req_history_addr,
+    output wire [7:0] match_req_tag,
+    input wire match_req_ready,
+
+    // match resp port
+    input wire match_resp_valid,
+    input wire [`MAX_MATCH_LEN_LOG2+1-1:0] match_resp_len,
+    input wire [7:0] match_resp_tag,
+    output wire match_resp_ready
+);
+
+  reg [`ADDR_WIDTH-1:0] job_head_addr_reg;
+  reg job_delim_reg;
+  reg [`JOB_LEN-1:0] tbl_history_valid_reg;
+  reg [`JOB_LEN*`ADDR_WIDTH-1:0] tbl_history_addr_reg;
+  reg [`JOB_LEN*`META_MATCH_LEN_WIDTH-1:0] tbl_meta_match_len_reg;
+  reg [`JOB_LEN-1:0] tbl_meta_match_can_ext_reg;
 
 
-    
+  // state machine
+  localparam S_LOAD = 3'b001;
+  localparam S_SEEK_MATCH_HEAD = 3'b010;
+  localparam S_LAZY_MATCH = 3'b011;
+  localparam S_LAZY_SUMMARY = 3'b100;
+  localparam S_LIT_TAIL = 3'b101;
+  localparam S_SEND_SEQ = 3'b110;
+  reg [2:0] state_reg;
+
+  // load part logic
+  localparam LOAD_COUNT_LOG2 = `JOB_LEN_LOG2 - `HASH_ISSUE_WIDTH_LOG2;
+  localparam MAX_LOAD_COUNT = 2 ** LOAD_COUNT_LOG2;
+  reg [LOAD_COUNT_LOG2-1:0] load_counter_reg;
+  assign hash_batch_ready = (state_reg == S_LOAD);
+  always @(posedge clk) begin
+    if (!rst_n) begin
+      load_counter_reg <= '0;
+    end else begin
+      if((state_reg == S_LOAD) && hash_batch_valid) begin
+        if(load_counter_reg == 0) begin
+          job_head_addr_reg <= hash_batch_head_addr;
+        end else if (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0]-1)) begin
+          job_delim_reg <= hash_batch_delim;
+        end
+        for(integer i = 0; i < MAX_LOAD_COUNT; i = i + 1) begin
+          if(i[LOAD_COUNT_LOG2-1:0] == load_counter_reg) begin
+            tbl_history_valid_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_history_valid;
+            tbl_history_addr_reg[i * `ADDR_WIDTH * `HASH_ISSUE_WIDTH +: `ADDR_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_history_addr;
+            tbl_meta_match_len_reg[i * `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH +: `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_len;
+            tbl_meta_match_can_ext_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_can_ext;
+          end
+        end
+        load_counter_reg <= load_counter_reg + 1;
+      end
+    end
+  end
+
+  // seek match head part logic
+  reg [`JOB_LEN_LOG2-1:0] seq_head_ptr_reg;
+  reg [`JOB_LEN_LOG2-1:0] match_head_ptr_reg;
+  always @(posedge clk) begin
+    if(state_reg == S_LOAD)begin
+      seq_head_ptr_reg <= 0;
+      match_head_ptr_reg <= 0;
+    end else if (state_reg == S_SEEK_MATCH_HEAD) begin
+      if((match_head_ptr_reg < `JOB_LEN - 8) && (tbl_history_valid_reg[match_head_ptr_reg +: 8] == 8'h00)) begin
+        match_head_ptr_reg <= match_head_ptr_reg + 4;
+      end else if ((match_head_ptr_reg < `JOB_LEN - 4) && (tbl_history_valid_reg[match_head_ptr_reg +: 4] == 4'h0)) begin
+        match_head_ptr_reg <= match_head_ptr_reg + 2;
+      end else if ((match_head_ptr_reg < `JOB_LEN - 1) && (tbl_history_valid_reg[match_head_ptr_reg] == 1'b0)) begin
+        match_head_ptr_reg <= match_head_ptr_reg + 1;
+      end
+    end
+  end
+
+
+
+  always @(posedge clk) begin
+    if (!rst_n) begin
+      state_reg <= S_LOAD;
+    end else begin
+      // 状态机的转换
+      case (state_reg)
+        S_LOAD: begin
+          if(hash_batch_valid && (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0]-1))) begin
+            state_reg <= S_SEEK_MATCH_HEAD;
+          end
+        end
+        S_SEEK_MATCH_HEAD: begin
+          if(tbl_history_valid_reg[match_head_ptr_reg]) begin
+            state_reg <= S_LAZY_MATCH;
+          end else if (match_head_ptr_reg == `JOB_LEN - 1) begin
+            state_reg <= S_LIT_TAIL;
+          end
+        end
+        S_LAZY_MATCH: begin
+          if (seq_ready) begin
+            state_reg <= S_LOAD;
+          end
+        end
+        default: begin
+          state_reg <= S_LOAD;
+        end
+      endcase
+    end
+  end
+
+
+
+
+
 
 endmodule
