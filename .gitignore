@@ -14,3 +14,4 @@ run/build/*
 run/sim_out/*
 corpus/silesia*
 beezip-ae.tar.gz
+sim/

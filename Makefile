@@ -78,3 +78,16 @@ clean:
 	mkdir -p ${BALANCED_SIM_OUT_DIR}
 	mkdir -p ${BETTER_SIM_OUT_DIR}
 	clear
+
+# Verification
+JOB_PE_TB_DIR := ${BEEZIP_SRC_DIR}/test/job_pe_tb
+JOB_PE_TB_CSRC := $(wildcard ${JOB_PE_TB_DIR}/*.cpp)
+JOB_PE_TB_INC := ${JOB_PE_TB_DIR}
+build_job_pe_tb:
+	mkdir -p ${BEEZIP_SIM_DIR}/job_pe_tb
+	rm -rf ${BEEZIP_SIM_DIR}/job_pe_tb
+	verilator --cc --exe --build -j 1 \
+	-f ${JOB_PE_TB_DIR}/job_pe_tb.f -I${INC_DIR_PATH} \
+	${JOB_PE_TB_CSRC} -CFLAGS -I${JOB_PE_TB_INC}\
+	--top-module job_pe \
+	-Mdir ${BEEZIP_SIM_DIR}/job_pe_tb

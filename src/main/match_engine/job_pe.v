@@ -2,9 +2,7 @@
 `include "util.vh"
 `include "log.vh"
 
-module job_pe #(
-    parameter MATCH_PE_IDX = 0
-) (
+module job_pe (
     input wire clk,
     input wire rst_n,
 
@@ -59,7 +57,6 @@ module job_pe #(
   localparam S_LAZY_MATCH = 3'b011;
   localparam S_LAZY_SUMMARY = 3'b100;
   localparam S_LIT_TAIL = 3'b101;
-  localparam S_SEND_SEQ = 3'b110;
   reg [2:0] state_reg;
 
   // load part logic
@@ -72,7 +69,6 @@ module job_pe #(
   // 在 load 时计算 offset
   generate
     for(g_i = 0; g_i < `HASH_ISSUE_WIDTH; g_i = g_i + 1) begin: HASH_BATCH_OFFSET_GEN
-      wire dump;
       assign `VEC_SLICE(hash_batch_offset, g_i, `SEQ_OFFSET_BITS) = {hash_batch_head_addr + g_i[`ADDR_WIDTH-1:0] - `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH)}[`SEQ_OFFSET_BITS-1:0];
       assign `VEC_SLICE(hash_batch_history_addr_meta_bias, g_i, `ADDR_WIDTH) = `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH) + `META_HISTORY_LEN;
     end
@@ -111,10 +107,10 @@ module job_pe #(
   wire [`JOB_LEN * SEQ_OFFSET_BITS_LOG2-1:0] job_tbl_offset_bits;
   generate
     for(g_i = 0; g_i < `JOB_LEN; g_i = g_i + 1) begin: JOB_TBL_OFFSET_BITS_GEN
-      wire dump;
+      /* verilator lint_off PINCONNECTEMPTY */
       priority_encoder #(`SEQ_OFFSET_BITS) job_tbl_offset_bits_enc (
         .input_vec(`VEC_SLICE(job_tbl_offset_reg, g_i, `SEQ_OFFSET_BITS)),
-        .output_valid(dump),
+        .output_valid(),
         .output_index(`VEC_SLICE(job_tbl_offset_bits, g_i, SEQ_OFFSET_BITS_LOG2))
       );
     end
@@ -377,8 +373,6 @@ module job_pe #(
       endcase
     end
   end
-
-  wire signed [31:0] a = -'sd4;
 
 
 
