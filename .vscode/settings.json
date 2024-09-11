@@ -1,5 +1,11 @@
 {
     "verilog.linting.verilator.includePath": [],
     "verilog.linting.verilator.arguments": "-F beezip.f --timing",
-    "verilog.formatting.verilogHDL.formatter": "verible-verilog-format"
+    "verilog.formatting.verilogHDL.formatter": "verible-verilog-format",
+    "C_Cpp.default.cppStandard": "c++20",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/sim/job_pe_tb",
+        "/home/gaoruihao/verilator/include"
+    ]
 }
