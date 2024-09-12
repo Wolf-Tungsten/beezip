@@ -62,7 +62,7 @@ module job_pe (
   // load part logic
   localparam LOAD_COUNT_LOG2 = `JOB_LEN_LOG2 - `HASH_ISSUE_WIDTH_LOG2;
   localparam MAX_LOAD_COUNT = 2 ** LOAD_COUNT_LOG2;
-  reg [LOAD_COUNT_LOG2-1:0] load_counter_reg;
+  reg [LOAD_COUNT_LOG2+1-1:0] load_counter_reg;
   wire [`HASH_ISSUE_WIDTH*`SEQ_OFFSET_BITS-1:0] hash_batch_offset;
   wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] hash_batch_history_addr_meta_bias;
   genvar g_i;
@@ -85,7 +85,7 @@ module job_pe (
           job_delim_reg <= hash_batch_delim;
         end
         for (integer i = 0; i < MAX_LOAD_COUNT; i = i + 1) begin
-          if (i[LOAD_COUNT_LOG2-1:0] == load_counter_reg) begin
+          if (i[LOAD_COUNT_LOG2+1-1:0] == load_counter_reg) begin
             job_tbl_history_valid_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_history_valid;
             job_tbl_history_addr_reg[i * `ADDR_WIDTH * `HASH_ISSUE_WIDTH +: `ADDR_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_history_addr_meta_bias;
             job_tbl_meta_match_len_reg[i * `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH +: `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_len;
@@ -337,7 +337,7 @@ module job_pe (
       // 状态机的转换
       case (state_reg)
         S_LOAD: begin
-          if(hash_batch_valid && (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0]-1))) begin
+          if(hash_batch_valid && (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2+1-1:0]-1))) begin
             state_reg <= S_SEEK_MATCH_HEAD;
           end
         end

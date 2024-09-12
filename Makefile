@@ -71,6 +71,7 @@ run_full_ae: hw_comp sw_comp
 clean:
 	make -C ${ZSTD_EXT_SEQ_PROD_PATH} clean
 	rm -rf ${BEEZIP_RUN_DIR}
+	rm -rf ${BEEZIP_SIM_DIR}
 	mkdir -p ${HW_BUILD_DIR}
 	mkdir -p ${SW_BUILD_DIR}
 	mkdir -p ${BASIC_TEST_SIM_OUT_DIR}
@@ -85,9 +86,12 @@ JOB_PE_TB_CSRC := $(wildcard ${JOB_PE_TB_DIR}/*.cpp)
 JOB_PE_TB_INC := ${JOB_PE_TB_DIR}
 build_job_pe_tb:
 	mkdir -p ${BEEZIP_SIM_DIR}/job_pe_tb
-	rm -rf ${BEEZIP_SIM_DIR}/job_pe_tb
-	verilator --cc --exe --build -j 1 \
+	verilator --cc --exe --build -j 1 --trace \
 	-f ${JOB_PE_TB_DIR}/job_pe_tb.f -I${INC_DIR_PATH} \
-	${JOB_PE_TB_CSRC} -CFLAGS -I${JOB_PE_TB_INC}\
+	${JOB_PE_TB_CSRC} -CFLAGS "-I${JOB_PE_TB_INC} -O0 -g" \
 	--top-module job_pe \
 	-Mdir ${BEEZIP_SIM_DIR}/job_pe_tb
+
+run_job_pe_tb: build_job_pe_tb
+	cd ${BEEZIP_SIM_DIR}/job_pe_tb && ./Vjob_pe
+	

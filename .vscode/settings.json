@@ -7,5 +7,10 @@
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/sim/job_pe_tb",
         "/home/gaoruihao/verilator/include"
-    ]
+    ],
+    "files.associations": {
+        "*.svp": "systemverilog",
+        "iostream": "cpp",
+        "random": "cpp"
+    }
 }

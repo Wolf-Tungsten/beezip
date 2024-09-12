@@ -1,7 +1,7 @@
 `ifndef PARAMETERS_V
 `define PARAMETERS_V
 
-`define TD #1
+`define TD
 // Parameters
 `define HASH_ISSUE_WIDTH_LOG2 5
 `define HASH_ISSUE_WIDTH (2**`HASH_ISSUE_WIDTH_LOG2)

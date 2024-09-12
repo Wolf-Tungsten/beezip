@@ -1,12 +1,14 @@
 #include "Vjob_pe.h"
+#include "verilated_vcd_c.h"
 #include <memory>
 #include <vector>
 #include <deque>
+#include <random>
 
 namespace job_pe_tb {
     const int HASH_ISSUE_WIDTH = 32;
     const int WINDOW_SIZE = 1024 * 1024;
-    const int JOB_LEN = HASH_ISSUE_WIDTH * 4;
+    const int JOB_LEN = 64;
     const int TEST_JOB_COUNT = 1000;
     const int MIN_MATCH_LEN = 4;
     const int MAX_MATCH_LEN = 256;
@@ -31,7 +33,7 @@ namespace job_pe_tb {
     };
     class JobPETestbench {
         public:
-        JobPETestbench(std::unique_ptr<VerilatedContext> contextp, std::unique_ptr<Vjob_pe> dut);
+        JobPETestbench(std::unique_ptr<VerilatedContext>& contextp, std::unique_ptr<Vjob_pe>& dut);
         ~JobPETestbench();
         void run();
         
