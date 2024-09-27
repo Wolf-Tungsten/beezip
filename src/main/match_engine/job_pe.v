@@ -29,13 +29,13 @@ module job_pe (
     output wire match_req_valid,
     output wire [`ADDR_WIDTH-1:0] match_req_head_addr,
     output reg [`ADDR_WIDTH-1:0] match_req_history_addr,
-    output reg [`LAZY_MATCH_LEN_LOG2-1:0] match_req_tag,
+    output reg [`LAZY_MATCH_LEN-1:0] match_req_tag,
     input wire match_req_ready,
 
     // match resp port
     input wire match_resp_valid,
     input wire [`MATCH_LEN_WIDTH-1:0] match_resp_len,
-    input wire [`LAZY_MATCH_LEN_LOG2-1:0] match_resp_tag,
+    input wire [`LAZY_MATCH_LEN-1:0] match_resp_tag,
     output wire match_resp_ready
 );
 
@@ -138,24 +138,16 @@ module job_pe (
 
   
   // lazy match part logic
+  reg lazy_tbl_done_reg;
+  reg lazy_tbl_requested_reg;
   reg [`LAZY_MATCH_LEN-1:0] lazy_tbl_valid_reg;
   reg [`LAZY_MATCH_LEN-1:0] lazy_tbl_pending_reg;
-  reg [`LAZY_MATCH_LEN-1:0] lazy_tbl_done_reg;
   reg [`LAZY_MATCH_LEN*`JOB_LEN_LOG2-1:0] lazy_tbl_idx_reg;
   reg [`LAZY_MATCH_LEN*`ADDR_WIDTH-1:0] lazy_tbl_head_addr_reg;
   reg [`LAZY_MATCH_LEN*`ADDR_WIDTH-1:0] lazy_tbl_history_addr_reg;
   reg [`LAZY_MATCH_LEN*`MATCH_LEN_WIDTH-1:0] lazy_tbl_match_len_reg;
   reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS-1:0] lazy_tbl_offset_reg;
-  reg [`LAZY_MATCH_LEN*SEQ_OFFSET_BITS_LOG2-1:0] lazy_tbl_offset_bits_reg;
-  reg [`LAZY_MATCH_LEN*LAZY_GAIN_BITS-1:0] lazy_tbl_match_gain_reg;
-  wire [`LAZY_MATCH_LEN*LAZY_GAIN_BITS-1:0] lazy_tbl_match_gain;
-
-  generate
-    for(g_i = 0; g_i < `LAZY_MATCH_LEN; g_i = g_i + 1) begin: LAZY_TBL_OFFSET_HIGHBIT_ENC
-      wire [LAZY_GAIN_BITS-1:0] bias = (`LAZY_MATCH_LEN - g_i) * 4;
-      assign `VEC_SLICE(lazy_tbl_match_gain, g_i, LAZY_GAIN_BITS) = (`ZERO_EXTEND(`VEC_SLICE(lazy_tbl_match_len_reg, g_i, `MATCH_LEN_WIDTH), LAZY_GAIN_BITS) << 2) + bias;
-    end
-  endgenerate
+  reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS_LOG2-1:0] lazy_tbl_offset_bits_reg;
 
   function automatic [`JOB_LEN_LOG2-1:0] match_head_relative_idx;
     input integer idx;
@@ -174,11 +166,12 @@ module job_pe (
   
   always @(posedge clk) begin
     if(state_reg == S_SEEK_MATCH_HEAD && job_tbl_history_valid_reg[match_head_ptr_reg]) begin
+      lazy_tbl_done_reg <= 1'b0;
+      lazy_tbl_requested_reg <= 1'b0;
       for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
         if({1'b0, match_head_ptr_reg} + i[`JOB_LEN_LOG2+1-1:0] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)];
           lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)];
-          lazy_tbl_done_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)] ? (!job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)]) : 1'b1;
           `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_relative_idx(i);
           // lazy_table 中的地址已经增加了 META_HISTORY_LEN 偏移
           `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN;
@@ -190,26 +183,28 @@ module job_pe (
         end else begin
           lazy_tbl_valid_reg[i] <= 1'b0;
           lazy_tbl_pending_reg[i] <= 1'b0;
-          lazy_tbl_done_reg[i] <= 1'b1;
           `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= '0;
         end
       end
     end if (state_reg == S_LAZY_MATCH) begin
       if(match_req_valid && match_req_ready) begin
         // 请求发送成功，将 pending 寄存器对应位置清零
-        lazy_tbl_pending_reg <= lazy_tbl_pending_reg & ~lazy_match_req_sel;
+        lazy_tbl_requested_reg <= 1'b1;
       end
       if(match_resp_valid && match_resp_ready) begin
         // 响应接收成功，将 done 寄存器对应位置置一
         // 并且将 match_len 累加
-        lazy_tbl_done_reg[match_resp_tag] <= 1'b1;
-        `VEC_SLICE(lazy_tbl_match_len_reg, match_resp_tag, `MATCH_LEN_WIDTH) <= `VEC_SLICE(lazy_tbl_match_len_reg, match_resp_tag, `MATCH_LEN_WIDTH) + match_resp_len;
+        lazy_tbl_done_reg <= 1'b1;
+        for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
+          if(match_resp_tag[i]) begin
+            `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) + match_resp_len;
+          end
+        end
       end
-      lazy_tbl_match_gain_reg <= lazy_tbl_match_gain;
     end
   end
 
-  assign match_req_valid = (state_reg == S_LAZY_MATCH) && (|lazy_tbl_pending_reg);
+  assign match_req_valid = (state_reg == S_LAZY_MATCH) && (|lazy_tbl_pending_reg) && ~lazy_tbl_requested_reg;
   mux1h #(.P_CNT(`LAZY_MATCH_LEN), .P_W(`ADDR_WIDTH)) match_req_head_addr_mux (
     .input_payload_vec(lazy_tbl_head_addr_reg),
     .input_select_vec(lazy_match_req_sel),
@@ -220,94 +215,52 @@ module job_pe (
     .input_select_vec(lazy_match_req_sel),
     .output_payload(match_req_history_addr)
   );
-  wire tag_valid_dump;
-  priority_encoder #(.W(`LAZY_MATCH_LEN)) match_req_tag_enc (
-    .input_vec(lazy_tbl_pending_reg),
-    .output_valid(tag_valid_dump),
-    .output_index(match_req_tag)
+  assign match_req_tag = lazy_match_req_sel;
+
+  assign match_resp_ready = (state_reg == S_LAZY_MATCH) && ~lazy_tbl_done_reg;
+
+  // lazy summary part logi
+  wire lazy_summary_done, lazy_summary_seq_eoj, lazy_summary_overlap_len, lazy_summary_seq_delim, move_to_next_job;
+  wire [`JOB_LEN_LOG2-1:0] move_forward;
+  wire [`SEQ_LL_BITS-1:0] lazy_summary_seq_ll;
+  wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_ml;
+  wire [`SEQ_OFFSET_BITS-1:0] lazy_summary_seq_offset;
+  wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_overlap_len;
+  wire [`JOB_LEN_LOG2-1:0] lazy_summary_seq_head_ptr;
+  lazy_summary_pipeline lsp_inst(
+    .clk(clk),
+    
+    .i_match_done((state_reg == S_LAZY_MATCH & ((&(~lazy_tbl_pending_reg)) | lazy_tbl_done_reg)) | state_reg == S_LAZY_SUMMARY ),
+    .i_match_head_ptr(match_head_ptr_reg),
+    .i_seq_head_ptr(seq_head_ptr_reg),
+    .i_delim(job_delim_reg),
+    .i_match_valid(lazy_tbl_valid_reg),
+    .i_match_len(lazy_tbl_match_len_reg),
+    .i_offset(lazy_tbl_offset_reg),
+    .i_offset_bits(lazy_tbl_offset_bits_reg),
+
+    .o_summary_done(lazy_summary_done),
+    .o_seq_head_ptr(lazy_summary_seq_head_ptr),
+    .o_summary_ll(lazy_summary_seq_ll),
+    .o_summary_ml(lazy_summary_seq_ml),
+    .o_summary_offset(lazy_summary_seq_offset),
+    .o_summary_eoj(lazy_summary_seq_eoj),
+    .o_summary_overlap_len(lazy_summary_seq_overlap_len),
+    .o_summary_delim(lazy_summary_seq_delim),
+    .o_move_to_next_job(move_to_next_job),
+    .o_move_forward(move_forward)
   );
-
-  assign match_resp_ready = (state_reg == S_LAZY_MATCH) && ~(&lazy_tbl_done_reg);
-
-  // lazy summary part logic
-  reg lazy_summary_gain_valid_reg;
-  reg [`LAZY_MATCH_LEN*LAZY_GAIN_BITS-1:0] lazy_summary_gain_reg;
-  reg [LAZY_GAIN_BITS-1:0] best_gain;
-  reg [`JOB_LEN_LOG2-1:0] best_idx;
-  reg [`SEQ_LL_BITS-1:0] best_seq_ll_tmp, best_seq_ll;
-  reg [`SEQ_ML_BITS-1:0] best_seq_ml_tmp, best_seq_ml;
-  reg [`SEQ_OFFSET_BITS-1:0] best_seq_offset_tmp, best_seq_offset;
-  reg [`SEQ_ML_BITS-1:0] best_seq_overlap_len_tmp, best_seq_overlap_len;
-  reg move_to_next_job;
-
-  always @(*) begin
-    best_gain = lazy_summary_gain_reg[LAZY_GAIN_BITS-1:0];
-    best_idx = lazy_tbl_idx_reg[`JOB_LEN_LOG2-1:0];
-    best_seq_ll_tmp = `ZERO_EXTEND({best_idx - seq_head_ptr_reg}, `SEQ_LL_BITS);
-    best_seq_ml_tmp = `ZERO_EXTEND(`VEC_SLICE(lazy_tbl_match_len_reg, 0, `MATCH_LEN_WIDTH), `SEQ_ML_BITS);
-    best_seq_offset_tmp = `ZERO_EXTEND(`VEC_SLICE(lazy_tbl_offset_reg, 0, `SEQ_OFFSET_BITS), `SEQ_OFFSET_BITS);
-    for(integer i = 1; i < `LAZY_MATCH_LEN; i = i + 1) begin
-      if(lazy_tbl_valid_reg[i] && (`VEC_SLICE(lazy_summary_gain_reg, i, LAZY_GAIN_BITS) > best_gain)) begin
-        best_gain = `VEC_SLICE(lazy_summary_gain_reg, i, LAZY_GAIN_BITS);
-        best_idx = `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2);
-        best_seq_ll_tmp = `ZERO_EXTEND({best_idx - seq_head_ptr_reg}, `SEQ_LL_BITS);
-        best_seq_ml_tmp = `ZERO_EXTEND(`VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH), `SEQ_ML_BITS);
-        best_seq_offset_tmp = `ZERO_EXTEND(`VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS), `SEQ_OFFSET_BITS);
-      end
-    end
-    best_seq_next_idx = `ZERO_EXTEND(best_idx, `SEQ_ML_BITS) + best_seq_ml_tmp;
-    if ( best_seq_next_idx >= `JOB_LEN ) begin
-      move_to_next_job = 1'b1;
-      best_seq_overlap_len_tmp = best_seq_next_idx - `JOB_LEN;
-      if(job_delim_reg) begin
-        best_seq_ll = best_seq_ll_tmp + (`JOB_LEN - `ZERO_EXTEND(best_idx, `SEQ_LL_BITS));
-        best_seq_ml = '0;
-        best_seq_offset = '0;
-        best_seq_overlap_len = '0;
-      end else begin
-        best_seq_ll = best_seq_ll_tmp;
-        best_seq_ml = best_seq_ml_tmp;
-        best_seq_offset = best_seq_offset_tmp;
-        best_seq_overlap_len = best_seq_overlap_len_tmp;
-      end
-    end else begin
-      move_to_next_job = 1'b0;
-      best_seq_overlap_len_tmp = '0;
-      best_seq_ll = best_seq_ll_tmp;
-      best_seq_ml = best_seq_ml_tmp;
-      best_seq_offset = best_seq_offset_tmp;
-      best_seq_overlap_len = best_seq_overlap_len_tmp;
-    end
-  end
-  
-
-  always @(posedge clk) begin
-    if(state_reg == S_LAZY_MATCH) begin
-      lazy_summary_gain_valid_reg <= 1'b0;
-    end else if (state_reg == S_LAZY_SUMMARY) begin
-      if(!lazy_summary_gain_valid_reg) begin
-        for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
-          if(lazy_tbl_valid_reg[i]) begin
-            `VEC_SLICE(lazy_summary_gain_reg, i, LAZY_GAIN_BITS) <= `VEC_SLICE(lazy_tbl_match_gain_reg, i, LAZY_GAIN_BITS) - `ZERO_EXTEND(`VEC_SLICE(lazy_tbl_offset_bits_reg, i, SEQ_OFFSET_BITS_LOG2), LAZY_GAIN_BITS);
-          end else begin
-            `VEC_SLICE(lazy_summary_gain_reg, i, LAZY_GAIN_BITS) <= '0;
-          end
-        end
-        lazy_summary_gain_valid_reg <= 1'b1;
-      end
-    end
-  end
 
   always @(*) begin
     case(state_reg)
       S_LAZY_SUMMARY: begin
-        seq_valid = lazy_summary_gain_valid_reg;
-        seq_ll = best_seq_ll;
-        seq_ml = best_seq_ml;
-        seq_offset = best_seq_offset;
-        seq_eoj = move_to_next_job;
-        seq_overlap_len = best_seq_overlap_len;
-        seq_delim = job_delim_reg; 
+        seq_valid = lazy_summary_done && (lazy_summary_seq_head_ptr == seq_head_ptr_reg);
+        seq_ll = lazy_summary_seq_ll;
+        seq_ml = lazy_summary_seq_ml;
+        seq_offset = lazy_summary_seq_offset;
+        seq_eoj = lazy_summary_seq_eoj;
+        seq_overlap_len = lazy_summary_seq_overlap_len;
+        seq_delim = lazy_summary_seq_delim;
       end
       S_LIT_TAIL: begin
         seq_valid = 1'b1;
@@ -349,7 +302,7 @@ module job_pe (
           end
         end
         S_LAZY_MATCH: begin
-          if (&lazy_tbl_done_reg) begin
+          if (lazy_tbl_done_reg) begin
             state_reg <= S_LAZY_SUMMARY;
           end
         end
