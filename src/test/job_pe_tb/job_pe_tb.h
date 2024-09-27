@@ -58,6 +58,7 @@ namespace job_pe_tb {
         void serveMatchReq();
         void serveMatchResp();
         void serveSeq();
+        void printJob(int jobId);
 
     };
 }

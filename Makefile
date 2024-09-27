@@ -88,7 +88,7 @@ build_job_pe_tb:
 	mkdir -p ${BEEZIP_SIM_DIR}/job_pe_tb
 	verilator --cc --exe --build -j 1 --trace \
 	-f ${JOB_PE_TB_DIR}/job_pe_tb.f -I${INC_DIR_PATH} \
-	${JOB_PE_TB_CSRC} -CFLAGS "-I${JOB_PE_TB_INC} -O0 -g" \
+	${JOB_PE_TB_CSRC} -CFLAGS "-I${JOB_PE_TB_INC} -DVL_DEBUG=1 -g -O0" \
 	--top-module job_pe \
 	-Mdir ${BEEZIP_SIM_DIR}/job_pe_tb
 
