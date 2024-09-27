@@ -78,22 +78,26 @@ module job_pe (
     if (!rst_n) begin
       load_counter_reg <= '0;
     end else begin
-      if ((state_reg == S_LOAD) && hash_batch_valid) begin
-        if (load_counter_reg == 0) begin
-          job_head_addr_reg <= hash_batch_head_addr;
-        end else if (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0] - 1)) begin
-          job_delim_reg <= hash_batch_delim;
-        end
-        for (integer i = 0; i < MAX_LOAD_COUNT; i = i + 1) begin
-          if (i[LOAD_COUNT_LOG2+1-1:0] == load_counter_reg) begin
-            job_tbl_history_valid_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_history_valid;
-            job_tbl_history_addr_reg[i * `ADDR_WIDTH * `HASH_ISSUE_WIDTH +: `ADDR_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_history_addr_meta_bias;
-            job_tbl_meta_match_len_reg[i * `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH +: `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_len;
-            job_tbl_meta_match_can_ext_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_can_ext;
-            job_tbl_offset_reg[i * `SEQ_OFFSET_BITS * `HASH_ISSUE_WIDTH +: `SEQ_OFFSET_BITS * `HASH_ISSUE_WIDTH] <= hash_batch_offset;
+      if ((state_reg == S_LOAD)) begin
+        if(hash_batch_valid) begin
+          $display("[job_pe @ %0t] LOAD %d", $time, load_counter_reg);
+          $display("[job_pe @ %0t] HistoryValid=%b", $time, hash_batch_history_valid);
+          if (load_counter_reg == 0) begin
+            job_head_addr_reg <= hash_batch_head_addr;
+          end else if (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0] - 1)) begin
+            job_delim_reg <= hash_batch_delim;
           end
+          for (integer i = 0; i < MAX_LOAD_COUNT; i = i + 1) begin
+            if (i[LOAD_COUNT_LOG2+1-1:0] == load_counter_reg) begin
+              job_tbl_history_valid_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_history_valid;
+              job_tbl_history_addr_reg[i * `ADDR_WIDTH * `HASH_ISSUE_WIDTH +: `ADDR_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_history_addr_meta_bias;
+              job_tbl_meta_match_len_reg[i * `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH +: `META_MATCH_LEN_WIDTH * `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_len;
+              job_tbl_meta_match_can_ext_reg[i * `HASH_ISSUE_WIDTH +: `HASH_ISSUE_WIDTH] <= hash_batch_meta_match_can_ext;
+              job_tbl_offset_reg[i * `SEQ_OFFSET_BITS * `HASH_ISSUE_WIDTH +: `SEQ_OFFSET_BITS * `HASH_ISSUE_WIDTH] <= hash_batch_offset;
+            end
+          end
+          load_counter_reg <= load_counter_reg + 1;
         end
-        load_counter_reg <= load_counter_reg + 1;
       end else begin
         load_counter_reg <= '0;
       end
@@ -103,7 +107,6 @@ module job_pe (
   // seek match head part logic
   reg [`JOB_LEN_LOG2-1:0] seq_head_ptr_reg;
   reg [`JOB_LEN_LOG2-1:0] match_head_ptr_reg;
-  reg [`SEQ_ML_BITS-1:0] best_seq_next_idx;
   wire [`JOB_LEN * SEQ_OFFSET_BITS_LOG2-1:0] job_tbl_offset_bits;
   generate
     for(g_i = 0; g_i < `JOB_LEN; g_i = g_i + 1) begin: JOB_TBL_OFFSET_BITS_GEN
@@ -121,17 +124,22 @@ module job_pe (
       match_head_ptr_reg <= 0;
     end else if (state_reg == S_SEEK_MATCH_HEAD) begin
       job_tbl_offset_bits_reg <= job_tbl_offset_bits;
+      $display("[job_pe @ %0t] HistoryValid=%b", $time, job_tbl_history_valid_reg);
       if((match_head_ptr_reg < `JOB_LEN - 8) && (job_tbl_history_valid_reg[match_head_ptr_reg +: 8] == 8'h00)) begin
-        match_head_ptr_reg <= match_head_ptr_reg + 4;
+        $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 8", $time, seq_head_ptr_reg, match_head_ptr_reg);
+        match_head_ptr_reg <= match_head_ptr_reg + 8;
       end else if ((match_head_ptr_reg < `JOB_LEN - 4) && (job_tbl_history_valid_reg[match_head_ptr_reg +: 4] == 4'h0)) begin
-        match_head_ptr_reg <= match_head_ptr_reg + 2;
+        $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 4", $time, seq_head_ptr_reg, match_head_ptr_reg);
+        match_head_ptr_reg <= match_head_ptr_reg + 4;
       end else if ((match_head_ptr_reg < `JOB_LEN - 1) && (job_tbl_history_valid_reg[match_head_ptr_reg] == 1'b0)) begin
+        $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 1", $time, seq_head_ptr_reg, match_head_ptr_reg);
         match_head_ptr_reg <= match_head_ptr_reg + 1;
       end
     end else if (state_reg == S_LAZY_SUMMARY) begin
       if (seq_valid && seq_ready) begin
-        seq_head_ptr_reg <= best_seq_next_idx[`JOB_LEN_LOG2-1:0];
-        match_head_ptr_reg <= best_seq_next_idx[`JOB_LEN_LOG2-1:0];
+        $display("[job_pe @ %0t] S_LAZY_SUMMARY seq_head=%d, match_head=%d, move %d", $time, seq_head_ptr_reg, match_head_ptr_reg, move_forward);
+        seq_head_ptr_reg <= seq_head_ptr_reg + move_forward;
+        match_head_ptr_reg <= seq_head_ptr_reg + move_forward;
       end
     end
   end
@@ -168,6 +176,7 @@ module job_pe (
     if(state_reg == S_SEEK_MATCH_HEAD && job_tbl_history_valid_reg[match_head_ptr_reg]) begin
       lazy_tbl_done_reg <= 1'b0;
       lazy_tbl_requested_reg <= 1'b0;
+      $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD load match_head=%d into lazy tbl", $time, match_head_ptr_reg);
       for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
         if({1'b0, match_head_ptr_reg} + i[`JOB_LEN_LOG2+1-1:0] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)];

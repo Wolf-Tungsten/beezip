@@ -116,11 +116,13 @@ void JobPETestbench::serveHashBatch() {
   dut->hash_batch_meta_match_can_ext = 0;
   for (int i = HASH_ISSUE_WIDTH - 1; i >= 0; i--) {
     auto &item = job.hashResults[hashBatchIdx * HASH_ISSUE_WIDTH + i];
-    dut->hash_batch_history_valid |= item.historyValid;
+    //std::cout << hashBatchIdx * HASH_ISSUE_WIDTH + i << " v= " << item.historyValid << std::endl;
     dut->hash_batch_history_valid <<= 1;
-    dut->hash_batch_meta_match_can_ext |= item.metaMatchCanExt;
+    dut->hash_batch_history_valid |= item.historyValid;
     dut->hash_batch_meta_match_can_ext <<= 1;
+    dut->hash_batch_meta_match_can_ext |= item.metaMatchCanExt;
   }
+  std::cout << std::bitset<32>(dut->hash_batch_history_valid) << std::endl;
 
   // 设置 historyAddr 和 metaMatchLen
   uint64_t historyAddrBuf = 0, metaMatchLenBuf = 0;
