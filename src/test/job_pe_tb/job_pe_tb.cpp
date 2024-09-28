@@ -77,7 +77,7 @@ void JobPETestbench::generateJobs() {
       int max_offset = headAddr < WINDOW_SIZE ? headAddr : WINDOW_SIZE;
       int offset = std::uniform_int_distribution<>(0, max_offset)(gen);
       HashResultItem item;
-      item.matchLen = std::uniform_int_distribution<int>(0, MAX_MATCH_LEN)(gen);
+      item.matchLen = std::uniform_int_distribution<int>(0, META_HISTORY_LEN)(gen) + std::uniform_int_distribution<int>(0, META_HISTORY_LEN)(gen);
       item.historyValid = item.matchLen >= MIN_MATCH_LEN;
       item.historyAddr = headAddr - offset;
       item.metaMatchCanExt = item.matchLen >= META_HISTORY_LEN;
@@ -122,7 +122,7 @@ void JobPETestbench::serveHashBatch() {
     dut->hash_batch_meta_match_can_ext <<= 1;
     dut->hash_batch_meta_match_can_ext |= item.metaMatchCanExt;
   }
-  std::cout << std::bitset<32>(dut->hash_batch_history_valid) << std::endl;
+  //std::cout << std::bitset<32>(dut->hash_batch_history_valid) << std::endl;
 
   // 设置 historyAddr 和 metaMatchLen
   uint64_t historyAddrBuf = 0, metaMatchLenBuf = 0;
@@ -162,8 +162,8 @@ void JobPETestbench::serveMatchReq() {
     int matchReqHistoryAddr = dut->match_req_history_addr;
     int matchReqTag = dut->match_req_tag;
     auto &currentJob = jobs[outputJobIdx];
-    int itemIdx = matchReqHeadAddr - META_MATCH_LEN_WIDTH - currentJob.headAddr;
-    std::cout << "MatchReq: headAddr=" << matchReqHeadAddr - META_HISTORY_LEN << " historyAddr=" << matchReqHistoryAddr - META_HISTORY_LEN << " " << matchReqTag << std::endl;
+    int itemIdx = matchReqHeadAddr - META_HISTORY_LEN - currentJob.headAddr;
+    std::cout << "MatchReq: headAddr=" << matchReqHeadAddr - META_HISTORY_LEN << " historyAddr=" << matchReqHistoryAddr - META_HISTORY_LEN << " matchReqTag=" <<std::bitset<8>(matchReqTag) << std::endl;
     if (itemIdx < 0 || itemIdx >= JOB_LEN) {
       tfp->close();
       throw std::runtime_error("Invalid match req head addr");

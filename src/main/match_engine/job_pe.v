@@ -81,7 +81,6 @@ module job_pe (
       if ((state_reg == S_LOAD)) begin
         if(hash_batch_valid) begin
           $display("[job_pe @ %0t] LOAD %d", $time, load_counter_reg);
-          $display("[job_pe @ %0t] HistoryValid=%b", $time, hash_batch_history_valid);
           if (load_counter_reg == 0) begin
             job_head_addr_reg <= hash_batch_head_addr;
           end else if (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0] - 1)) begin
@@ -184,11 +183,21 @@ module job_pe (
           `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_relative_idx(i);
           // lazy_table 中的地址已经增加了 META_HISTORY_LEN 偏移
           `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN;
-          `VEC_SLICE(lazy_tbl_history_addr_reg, i, `ADDR_WIDTH) <= `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN;
+          `VEC_SLICE(lazy_tbl_history_addr_reg, i, `ADDR_WIDTH) <= `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH);
           `VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS) <= `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS);
           `VEC_SLICE(lazy_tbl_offset_bits_reg, i, SEQ_OFFSET_BITS_LOG2) <= `VEC_SLICE(job_tbl_offset_bits_reg, match_head_relative_idx(i), SEQ_OFFSET_BITS_LOG2); 
           // lazy_table 中的 match_len 初始值就是 meta history 的匹配长度
           `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH);
+          $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD lazy_tbl[%0d] valid=%b, pending=%b, head_addr=%d, history_addr=%d, offset=%d, offset_bits=%d, match_len=%d", $time, i, 
+          job_tbl_history_valid_reg[match_head_relative_idx(i)], 
+          job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)], 
+          job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN, 
+          `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH), 
+          `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS),
+          `VEC_SLICE(job_tbl_offset_bits_reg, match_head_relative_idx(i), SEQ_OFFSET_BITS_LOG2),
+          `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH),
+          );
+
         end else begin
           lazy_tbl_valid_reg[i] <= 1'b0;
           lazy_tbl_pending_reg[i] <= 1'b0;
@@ -197,7 +206,8 @@ module job_pe (
       end
     end if (state_reg == S_LAZY_MATCH) begin
       if(match_req_valid && match_req_ready) begin
-        // 请求发送成功，将 pending 寄存器对应位置清零
+        // 请求发送成功，将 requested 寄存器置1
+        $display("[job_pe @ %0t] S_LAZY_MATCH match_req_head_addr=%d, match_req_history_addr=%d, match_req_tag=%b", $time, match_req_head_addr, match_req_history_addr, match_req_tag);
         lazy_tbl_requested_reg <= 1'b1;
       end
       if(match_resp_valid && match_resp_ready) begin
