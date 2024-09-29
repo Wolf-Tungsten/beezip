@@ -136,6 +136,7 @@ module job_pe (
       end
     end else if (state_reg == S_LAZY_SUMMARY) begin
       if (seq_valid && seq_ready) begin
+        $display("[job_pe @ %0t] S_LAZY_SUMMARY seq_ll=%d, seq_ml=%d, seq_offset=%d", $time, seq_ll, seq_ml, seq_offset);
         $display("[job_pe @ %0t] S_LAZY_SUMMARY seq_head=%d, match_head=%d, move %d", $time, seq_head_ptr_reg, match_head_ptr_reg, move_forward);
         seq_head_ptr_reg <= seq_head_ptr_reg + move_forward;
         match_head_ptr_reg <= seq_head_ptr_reg + move_forward;
@@ -321,7 +322,7 @@ module job_pe (
           end
         end
         S_LAZY_MATCH: begin
-          if (lazy_tbl_done_reg) begin
+          if ((match_resp_valid && match_resp_ready) | ~(|lazy_tbl_pending_reg)) begin
             state_reg <= S_LAZY_SUMMARY;
           end
         end

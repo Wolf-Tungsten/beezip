@@ -54,10 +54,14 @@ namespace job_pe_tb {
         int seqVerifiedIdx;
 
         void generateJobs();
-        void serveHashBatch();
-        void serveMatchReq();
-        void serveMatchResp();
-        void serveSeq();
+        void readHashBatch();
+        void writeHashBatch();
+        void readMatchReq();
+        void writeMatchReq();
+        void readMatchResp();
+        void writeMatchResp();
+        void readSeq();
+        void writeSeq();
         void printJob(int jobId);
 
     };

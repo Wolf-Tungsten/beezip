@@ -45,18 +45,24 @@ void JobPETestbench::run() {
   try {
     while (finishedJobCount < TEST_JOB_COUNT) {
       contextp->timeInc(1);
-      dut->clk = !dut->clk;
-      if (!dut->clk) {
-        if (contextp->time() > 10) {
-          dut->rst_n = !0;
-          serveHashBatch();
-          serveMatchReq();
-          serveMatchResp();
-          serveSeq();
-        }
+      dut->clk = 1;
+      if (contextp->time() > 10) {
+        readHashBatch();
+        readMatchReq();
+        readMatchResp();
+        readSeq();
       }
       dut->eval();
       tfp->dump(contextp->time());
+      dut->clk = 0;
+      if (contextp->time() > 10) {
+        dut->rst_n = !0;
+        writeHashBatch();
+        writeMatchReq();
+        writeMatchResp();
+        writeSeq();
+      }
+      dut->eval();
     }
     tfp->close();
   } catch (const std::exception &e) {
@@ -77,7 +83,9 @@ void JobPETestbench::generateJobs() {
       int max_offset = headAddr < WINDOW_SIZE ? headAddr : WINDOW_SIZE;
       int offset = std::uniform_int_distribution<>(0, max_offset)(gen);
       HashResultItem item;
-      item.matchLen = std::uniform_int_distribution<int>(0, META_HISTORY_LEN)(gen) + std::uniform_int_distribution<int>(0, META_HISTORY_LEN)(gen);
+      item.matchLen =
+          std::uniform_int_distribution<int>(0, META_HISTORY_LEN)(gen) +
+          std::uniform_int_distribution<int>(0, META_HISTORY_LEN)(gen);
       item.historyValid = item.matchLen >= MIN_MATCH_LEN;
       item.historyAddr = headAddr - offset;
       item.metaMatchCanExt = item.matchLen >= META_HISTORY_LEN;
@@ -89,15 +97,16 @@ void JobPETestbench::generateJobs() {
   }
 }
 
-void JobPETestbench::serveHashBatch() {
-  if (dut->hash_batch_valid && prevHashBatchReady) {
+void JobPETestbench::readHashBatch() {
+  if (dut->hash_batch_valid && dut->hash_batch_ready) {
     hashBatchIdx++;
     if (hashBatchIdx >= JOB_LEN / HASH_ISSUE_WIDTH) {
       hashBatchIdx = 0;
       inputJobIdx++;
     }
   }
-  prevHashBatchReady = dut->hash_batch_ready;
+}
+void JobPETestbench::writeHashBatch() {
   if (inputJobIdx >= TEST_JOB_COUNT) {
     dut->hash_batch_valid = 0;
     return;
@@ -116,13 +125,14 @@ void JobPETestbench::serveHashBatch() {
   dut->hash_batch_meta_match_can_ext = 0;
   for (int i = HASH_ISSUE_WIDTH - 1; i >= 0; i--) {
     auto &item = job.hashResults[hashBatchIdx * HASH_ISSUE_WIDTH + i];
-    //std::cout << hashBatchIdx * HASH_ISSUE_WIDTH + i << " v= " << item.historyValid << std::endl;
+    // std::cout << hashBatchIdx * HASH_ISSUE_WIDTH + i << " v= " <<
+    // item.historyValid << std::endl;
     dut->hash_batch_history_valid <<= 1;
     dut->hash_batch_history_valid |= item.historyValid;
     dut->hash_batch_meta_match_can_ext <<= 1;
     dut->hash_batch_meta_match_can_ext |= item.metaMatchCanExt;
   }
-  //std::cout << std::bitset<32>(dut->hash_batch_history_valid) << std::endl;
+  // std::cout << std::bitset<32>(dut->hash_batch_history_valid) << std::endl;
 
   // 设置 historyAddr 和 metaMatchLen
   uint64_t historyAddrBuf = 0, metaMatchLenBuf = 0;
@@ -155,7 +165,7 @@ void JobPETestbench::serveHashBatch() {
   }
 }
 
-void JobPETestbench::serveMatchReq() {
+void JobPETestbench::readMatchReq() {
   if (dut->match_req_valid && dut->match_req_ready) {
     // 检查 req 的正确性
     int matchReqHeadAddr = dut->match_req_head_addr;
@@ -163,7 +173,9 @@ void JobPETestbench::serveMatchReq() {
     int matchReqTag = dut->match_req_tag;
     auto &currentJob = jobs[outputJobIdx];
     int itemIdx = matchReqHeadAddr - META_HISTORY_LEN - currentJob.headAddr;
-    std::cout << "MatchReq: headAddr=" << matchReqHeadAddr - META_HISTORY_LEN << " historyAddr=" << matchReqHistoryAddr - META_HISTORY_LEN << " matchReqTag=" <<std::bitset<8>(matchReqTag) << std::endl;
+    std::cout << "MatchReq: headAddr=" << matchReqHeadAddr - META_HISTORY_LEN
+              << " historyAddr=" << matchReqHistoryAddr - META_HISTORY_LEN
+              << " matchReqTag=" << std::bitset<8>(matchReqTag) << std::endl;
     if (itemIdx < 0 || itemIdx >= JOB_LEN) {
       tfp->close();
       throw std::runtime_error("Invalid match req head addr");
@@ -186,15 +198,20 @@ void JobPETestbench::serveMatchReq() {
     resp.matchLen = currentJob.hashResults[itemIdx].matchLen;
     matchRespQueue.push_back(resp);
   }
+}
+
+void JobPETestbench::writeMatchReq() {
   // 更新 match_req_ready
   dut->match_req_ready = std::bernoulli_distribution(0.5)(gen);
 }
 
-void JobPETestbench::serveMatchResp() {
-  if (dut->match_resp_valid && prevMatchRespReady) {
+void JobPETestbench::readMatchResp() {
+  if (dut->match_resp_valid && dut->match_resp_ready) {
     matchRespQueue.pop_front();
   }
-  prevMatchRespReady = dut->match_resp_ready;
+}
+
+void JobPETestbench::writeMatchResp() {
   if (matchRespQueue.empty()) {
     dut->match_resp_valid = 0;
     return;
@@ -204,16 +221,18 @@ void JobPETestbench::serveMatchResp() {
   if (valid) {
     auto &resp = matchRespQueue.front();
     dut->match_resp_tag = resp.tag;
-    dut->match_resp_len = resp.matchLen;
+    dut->match_resp_len = resp.matchLen - META_HISTORY_LEN;
   }
 }
 
-void JobPETestbench::serveSeq() {
+void JobPETestbench::readSeq() {
   if (dut->seq_valid && dut->seq_ready) {
+    std::cout << "ServeSeq" << std::endl;
     seqVerifiedIdx += dut->seq_ll;
     auto &item = jobs[outputJobIdx].hashResults[seqVerifiedIdx];
     if (dut->seq_ml > 0) {
       if (dut->seq_ml != item.matchLen) {
+        printJob(outputJobIdx);
         throw std::runtime_error("Invalid seq match len");
       }
       if (dut->seq_offset !=
@@ -226,6 +245,12 @@ void JobPETestbench::serveSeq() {
       }
     }
     seqVerifiedIdx += dut->seq_ml;
+    std::cout << "Seq: headAddr="
+              << jobs[outputJobIdx].headAddr + seqVerifiedIdx
+              << " historyAddr=" << item.historyAddr
+              << " matchLen=" << item.matchLen
+              << " metaMatchLen=" << item.metaMatchLen
+              << " metaMatchCanExt=" << item.metaMatchCanExt << std::endl;
     if (dut->seq_eoj) {
       if (dut->seq_delim != jobs[outputJobIdx].delim) {
         throw std::runtime_error("Invalid seq delim");
@@ -244,6 +269,9 @@ void JobPETestbench::serveSeq() {
       seqVerifiedIdx = 0;
     }
   }
+}
+
+void JobPETestbench::writeSeq() {
   dut->seq_ready = std::bernoulli_distribution(0.5)(gen);
 }
 
@@ -252,23 +280,22 @@ void JobPETestbench::printJob(int jobId) {
   std::cout << "HeadAddr " << jobs[jobId].headAddr << std::endl;
   std::cout << "Delim " << jobs[jobId].delim << std::endl;
   // 打印表头
-  std::cout << std::left << std::setw(15) << "Idx" << std::left
-            << std::left << std::setw(15) << "HeadAddr" << std::left
-            << std::left << std::setw(15) << "HistoryValid" << std::left
-            << std::setw(15) << "HistoryAddr" << std::left << std::setw(15)
-            << "MatchLen" << std::left << std::setw(15) << "MetaMatchLen"
-            << std::left << std::setw(15) << "MetaMatchCanExt" << std::endl;
+  std::cout << std::left << std::setw(15) << "Idx" << std::left << std::left
+            << std::setw(15) << "HeadAddr" << std::left << std::left
+            << std::setw(15) << "HistoryValid" << std::left << std::setw(15)
+            << "HistoryAddr" << std::left << std::setw(15) << "MatchLen"
+            << std::left << std::setw(15) << "MetaMatchLen" << std::left
+            << std::setw(15) << "MetaMatchCanExt" << std::endl;
 
   // 打印每一行数据
   int idx = 0;
   for (auto &hr : jobs[jobId].hashResults) {
-    std::cout << std::left << std::setw(15) << idx
-              << std::left << std::setw(15) << jobs[jobId].headAddr + (idx++)
-              << std::left << std::setw(15) << hr.historyValid 
-              << std::left << std::setw(15) << hr.historyAddr 
-              << std::left << std::setw(15) << hr.matchLen 
-              << std::left << std::setw(15) << hr.metaMatchLen
-              << std::left << std::setw(15) << hr.metaMatchCanExt << std::endl;
+    std::cout << std::left << std::setw(15) << idx << std::left << std::setw(15)
+              << jobs[jobId].headAddr + (idx++) << std::left << std::setw(15)
+              << hr.historyValid << std::left << std::setw(15) << hr.historyAddr
+              << std::left << std::setw(15) << hr.matchLen << std::left
+              << std::setw(15) << hr.metaMatchLen << std::left << std::setw(15)
+              << hr.metaMatchCanExt << std::endl;
   }
 }
 }  // namespace job_pe_tb
