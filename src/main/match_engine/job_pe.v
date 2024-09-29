@@ -83,7 +83,7 @@ module job_pe (
           $display("[job_pe @ %0t] LOAD %d", $time, load_counter_reg);
           if (load_counter_reg == 0) begin
             job_head_addr_reg <= hash_batch_head_addr;
-          end else if (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2-1:0] - 1)) begin
+          end else if (load_counter_reg == (MAX_LOAD_COUNT[LOAD_COUNT_LOG2+1-1:0] - 1)) begin
             job_delim_reg <= hash_batch_delim;
           end
           for (integer i = 0; i < MAX_LOAD_COUNT; i = i + 1) begin

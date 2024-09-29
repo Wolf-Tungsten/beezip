@@ -54,6 +54,7 @@ void JobPETestbench::run() {
       }
       dut->eval();
       tfp->dump(contextp->time());
+      contextp->timeInc(1);
       dut->clk = 0;
       if (contextp->time() > 10) {
         dut->rst_n = !0;
@@ -63,6 +64,7 @@ void JobPETestbench::run() {
         writeSeq();
       }
       dut->eval();
+      tfp->dump(contextp->time());
     }
     tfp->close();
   } catch (const std::exception &e) {
@@ -76,7 +78,7 @@ void JobPETestbench::generateJobs() {
   std::bernoulli_distribution boolDist(0.5);
   for (int i = 0; i < TEST_JOB_COUNT; i++) {
     Job job;
-    job.headAddr = i;
+    job.headAddr = i * JOB_LEN;
     job.delim = boolDist(gen);
     for (int j = 0; j < JOB_LEN; j++) {
       int headAddr = job.headAddr + j;
@@ -227,9 +229,17 @@ void JobPETestbench::writeMatchResp() {
 
 void JobPETestbench::readSeq() {
   if (dut->seq_valid && dut->seq_ready) {
-    std::cout << "ServeSeq" << std::endl;
+    std::cout << "Seq: headAddr="
+              << jobs[outputJobIdx].headAddr + seqVerifiedIdx;
     seqVerifiedIdx += dut->seq_ll;
     auto &item = jobs[outputJobIdx].hashResults[seqVerifiedIdx];
+    std::cout << " litLen=" << dut->seq_ll
+              << " historyAddr=" << item.historyAddr
+              << " matchLen=" << dut->seq_ml
+              << " metaMatchLen=" << item.metaMatchLen
+              << " metaMatchCanExt=" << item.metaMatchCanExt 
+              << " eoj=" << (int)dut->seq_eoj
+              << std::endl;
     if (dut->seq_ml > 0) {
       if (dut->seq_ml != item.matchLen) {
         printJob(outputJobIdx);
@@ -245,14 +255,10 @@ void JobPETestbench::readSeq() {
       }
     }
     seqVerifiedIdx += dut->seq_ml;
-    std::cout << "Seq: headAddr="
-              << jobs[outputJobIdx].headAddr + seqVerifiedIdx
-              << " historyAddr=" << item.historyAddr
-              << " matchLen=" << item.matchLen
-              << " metaMatchLen=" << item.metaMatchLen
-              << " metaMatchCanExt=" << item.metaMatchCanExt << std::endl;
+    
     if (dut->seq_eoj) {
       if (dut->seq_delim != jobs[outputJobIdx].delim) {
+        printJob(outputJobIdx);
         throw std::runtime_error("Invalid seq delim");
       }
       if (dut->seq_delim) {
@@ -267,6 +273,7 @@ void JobPETestbench::readSeq() {
       outputJobIdx++;
       finishedJobCount++;
       seqVerifiedIdx = 0;
+      std::cout << " ======= EndOfJob ======= " << std::endl;
     }
   }
 }
