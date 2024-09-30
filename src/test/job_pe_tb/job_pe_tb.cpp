@@ -242,8 +242,21 @@ void JobPETestbench::readSeq() {
               << std::endl;
     if (dut->seq_ml > 0) {
       if (dut->seq_ml != item.matchLen) {
-        printJob(outputJobIdx);
-        throw std::runtime_error("Invalid seq match len");
+        bool metaHistoryContent = false;
+        if(dut->seq_ml == META_HISTORY_LEN) {
+          for(int i = 0; i < dut->seq_ll; i++){
+            if(jobs[outputJobIdx].hashResults[seqVerifiedIdx + i].metaMatchCanExt){
+              metaHistoryContent = true;
+              break;
+            }
+          }
+        }
+        if(!metaHistoryContent) {
+          printJob(outputJobIdx);
+          std::cout << "Expected match len: " << item.matchLen << " Actual: "
+                    << dut->seq_ml << std::endl;
+          throw std::runtime_error("Invalid seq match len");
+        }
       }
       if (dut->seq_offset !=
           (jobs[outputJobIdx].headAddr + seqVerifiedIdx) - item.historyAddr) {

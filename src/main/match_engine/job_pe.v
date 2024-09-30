@@ -39,7 +39,6 @@ module job_pe (
     output wire match_resp_ready
 );
 
-  localparam SEQ_OFFSET_BITS_LOG2 = $clog2(`SEQ_OFFSET_BITS);
   localparam LAZY_GAIN_BITS = `MATCH_LEN_WIDTH + 3;
 
   reg [`ADDR_WIDTH-1:0] job_head_addr_reg;
@@ -49,7 +48,6 @@ module job_pe (
   reg [`JOB_LEN*`META_MATCH_LEN_WIDTH-1:0] job_tbl_meta_match_len_reg;
   reg [`JOB_LEN-1:0] job_tbl_meta_match_can_ext_reg;
   reg [`JOB_LEN*`SEQ_OFFSET_BITS-1:0] job_tbl_offset_reg; // 在 LOAD 时计算
-  reg [`JOB_LEN*SEQ_OFFSET_BITS_LOG2-1:0] job_tbl_offset_bits_reg; // 在 SEEK_MATCH_HEAD 时计算
 
   // state machine
   localparam S_LOAD = 3'b001;
@@ -106,23 +104,12 @@ module job_pe (
   // seek match head part logic
   reg [`JOB_LEN_LOG2-1:0] seq_head_ptr_reg;
   reg [`JOB_LEN_LOG2-1:0] match_head_ptr_reg;
-  wire [`JOB_LEN * SEQ_OFFSET_BITS_LOG2-1:0] job_tbl_offset_bits;
-  generate
-    for(g_i = 0; g_i < `JOB_LEN; g_i = g_i + 1) begin: JOB_TBL_OFFSET_BITS_GEN
-      /* verilator lint_off PINCONNECTEMPTY */
-      priority_encoder #(`SEQ_OFFSET_BITS) job_tbl_offset_bits_enc (
-        .input_vec(`VEC_SLICE(job_tbl_offset_reg, g_i, `SEQ_OFFSET_BITS)),
-        .output_valid(),
-        .output_index(`VEC_SLICE(job_tbl_offset_bits, g_i, SEQ_OFFSET_BITS_LOG2))
-      );
-    end
-  endgenerate
+  
   always @(posedge clk) begin
     if (state_reg == S_LOAD) begin
       seq_head_ptr_reg   <= 0;
       match_head_ptr_reg <= 0;
     end else if (state_reg == S_SEEK_MATCH_HEAD) begin
-      job_tbl_offset_bits_reg <= job_tbl_offset_bits;
       $display("[job_pe @ %0t] HistoryValid=%b", $time, job_tbl_history_valid_reg);
       if((match_head_ptr_reg < `JOB_LEN - 8) && (job_tbl_history_valid_reg[match_head_ptr_reg +: 8] == 8'h00)) begin
         $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 8", $time, seq_head_ptr_reg, match_head_ptr_reg);
@@ -155,7 +142,6 @@ module job_pe (
   reg [`LAZY_MATCH_LEN*`ADDR_WIDTH-1:0] lazy_tbl_history_addr_reg;
   reg [`LAZY_MATCH_LEN*`MATCH_LEN_WIDTH-1:0] lazy_tbl_match_len_reg;
   reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS-1:0] lazy_tbl_offset_reg;
-  reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS_LOG2-1:0] lazy_tbl_offset_bits_reg;
 
   function automatic [`JOB_LEN_LOG2-1:0] match_head_relative_idx;
     input integer idx;
@@ -186,16 +172,14 @@ module job_pe (
           `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN;
           `VEC_SLICE(lazy_tbl_history_addr_reg, i, `ADDR_WIDTH) <= `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH);
           `VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS) <= `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS);
-          `VEC_SLICE(lazy_tbl_offset_bits_reg, i, SEQ_OFFSET_BITS_LOG2) <= `VEC_SLICE(job_tbl_offset_bits_reg, match_head_relative_idx(i), SEQ_OFFSET_BITS_LOG2); 
           // lazy_table 中的 match_len 初始值就是 meta history 的匹配长度
           `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH);
-          $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD lazy_tbl[%0d] valid=%b, pending=%b, head_addr=%d, history_addr=%d, offset=%d, offset_bits=%d, match_len=%d", $time, i, 
+          $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD lazy_tbl[%0d] valid=%b, pending=%b, head_addr=%d, history_addr=%d, offset=%d, match_len=%d", $time, i, 
           job_tbl_history_valid_reg[match_head_relative_idx(i)], 
           job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)], 
           job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN, 
           `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH), 
           `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS),
-          `VEC_SLICE(job_tbl_offset_bits_reg, match_head_relative_idx(i), SEQ_OFFSET_BITS_LOG2),
           `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH),
           );
 
@@ -257,7 +241,6 @@ module job_pe (
     .i_match_valid(lazy_tbl_valid_reg),
     .i_match_len(lazy_tbl_match_len_reg),
     .i_offset(lazy_tbl_offset_reg),
-    .i_offset_bits(lazy_tbl_offset_bits_reg),
 
     .o_summary_done(lazy_summary_done),
     .o_seq_head_ptr(lazy_summary_seq_head_ptr),
