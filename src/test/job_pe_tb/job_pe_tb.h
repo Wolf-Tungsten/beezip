@@ -9,7 +9,7 @@ namespace job_pe_tb {
     const int HASH_ISSUE_WIDTH = 32;
     const int WINDOW_SIZE = 1024 * 1024;
     const int JOB_LEN = 64;
-    const int TEST_JOB_COUNT = 1000;
+    const int TEST_JOB_COUNT = 10000;
     const int MIN_MATCH_LEN = 4;
     const int MAX_MATCH_LEN = 256;
     const int META_HISTORY_LEN = 15;
@@ -51,7 +51,7 @@ namespace job_pe_tb {
         bool prevHashBatchReady;
         bool prevMatchRespReady;
         std::deque<MatchResp> matchRespQueue;
-        int seqVerifiedIdx;
+        int nextVerifyIdx;
 
         void generateJobs();
         void readHashBatch();

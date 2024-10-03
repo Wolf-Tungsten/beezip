@@ -92,6 +92,6 @@ build_job_pe_tb:
 	--top-module job_pe \
 	-Mdir ${BEEZIP_SIM_DIR}/job_pe_tb
 
-run_job_pe_tb: build_job_pe_tb
+run_job_pe_tb: 
 	cd ${BEEZIP_SIM_DIR}/job_pe_tb && ./Vjob_pe
 	

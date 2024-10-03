@@ -267,7 +267,7 @@ module job_pe (
       end
       S_LIT_TAIL: begin
         seq_valid = 1'b1;
-        seq_ll = `ZERO_EXTEND((match_head_ptr_reg - seq_head_ptr_reg), `SEQ_LL_BITS);
+        seq_ll = `ZERO_EXTEND((match_head_ptr_reg - seq_head_ptr_reg + 1'b1), `SEQ_LL_BITS);
         seq_ml = '0;
         seq_offset = '0;
         seq_eoj = 1'b1;

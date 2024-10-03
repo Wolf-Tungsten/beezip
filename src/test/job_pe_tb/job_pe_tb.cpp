@@ -35,7 +35,7 @@ void JobPETestbench::run() {
   inputJobIdx = 0;
   outputJobIdx = 0;
   hashBatchIdx = 0;
-  seqVerifiedIdx = 0;
+  nextVerifyIdx = 0;
   dut->clk = 0;
   dut->rst_n = !1;
   dut->hash_batch_valid = 0;
@@ -230,9 +230,10 @@ void JobPETestbench::writeMatchResp() {
 void JobPETestbench::readSeq() {
   if (dut->seq_valid && dut->seq_ready) {
     std::cout << "Seq: headAddr="
-              << jobs[outputJobIdx].headAddr + seqVerifiedIdx;
-    seqVerifiedIdx += dut->seq_ll;
-    auto &item = jobs[outputJobIdx].hashResults[seqVerifiedIdx];
+              << jobs[outputJobIdx].headAddr + nextVerifyIdx
+              << " nextVerifyIdx=" << nextVerifyIdx;
+    nextVerifyIdx += dut->seq_ll;
+    auto &item = jobs[outputJobIdx].hashResults[nextVerifyIdx];
     std::cout << " litLen=" << dut->seq_ll
               << " historyAddr=" << item.historyAddr
               << " matchLen=" << dut->seq_ml
@@ -245,7 +246,7 @@ void JobPETestbench::readSeq() {
         bool metaHistoryContent = false;
         if(dut->seq_ml == META_HISTORY_LEN) {
           for(int i = 0; i < dut->seq_ll; i++){
-            if(jobs[outputJobIdx].hashResults[seqVerifiedIdx + i].metaMatchCanExt){
+            if(jobs[outputJobIdx].hashResults[nextVerifyIdx + i].metaMatchCanExt){
               metaHistoryContent = true;
               break;
             }
@@ -259,7 +260,7 @@ void JobPETestbench::readSeq() {
         }
       }
       if (dut->seq_offset !=
-          (jobs[outputJobIdx].headAddr + seqVerifiedIdx) - item.historyAddr) {
+          (jobs[outputJobIdx].headAddr + nextVerifyIdx) - item.historyAddr) {
         throw std::runtime_error("Invalid seq offset");
       }
     } else {
@@ -267,7 +268,7 @@ void JobPETestbench::readSeq() {
         throw std::runtime_error("Expect seq eoj");
       }
     }
-    seqVerifiedIdx += dut->seq_ml;
+    nextVerifyIdx += dut->seq_ml;
     
     if (dut->seq_eoj) {
       if (dut->seq_delim != jobs[outputJobIdx].delim) {
@@ -279,13 +280,15 @@ void JobPETestbench::readSeq() {
           throw std::runtime_error("Wrong delim with overlap");
         }
       } else {
-        if (seqVerifiedIdx - JOB_LEN != dut->seq_overlap_len) {
+        if (nextVerifyIdx - JOB_LEN != dut->seq_overlap_len) {
+          std::cout << "expected: " << nextVerifyIdx - JOB_LEN << std::endl;
+          std::cout << "actual: " << dut->seq_overlap_len << std::endl;
           throw std::runtime_error("Invalid seq overlap len");
         }
       }
       outputJobIdx++;
       finishedJobCount++;
-      seqVerifiedIdx = 0;
+      nextVerifyIdx = 0;
       std::cout << " ======= EndOfJob ======= " << std::endl;
     }
   }
