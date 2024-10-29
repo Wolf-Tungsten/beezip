@@ -44,8 +44,9 @@
 `define MAX_MATCH_LEN (2**`MAX_MATCH_LEN_LOG2)
 `define MIN_MATCH_LEN 4
 
-`define LAZY_MATCH_LEN 3
-`define LAZY_MATCH_LEN_LOG2 ($clog2(`LAZY_MATCH_LEN))
+`define LAZY_LEN 4
+`define LAZY_LEN_LOG2 ($clog2(`LAZY_LEN))
+`define NUM_MATCH_REQ_CH 4
 
 `define SEQ_LL_BITS 17
 `define SEQ_ML_BITS (`MATCH_LEN_WIDTH) // 7
