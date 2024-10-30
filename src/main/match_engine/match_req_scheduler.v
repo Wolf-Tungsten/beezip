@@ -19,7 +19,7 @@ match_req_scheduler
         - 包含一个  Match Request
         - 附带一个 tag 字段，该字段由 match_req_scheduler 的 IDX 参数、来源请求在 Match Request Group Channel 中的索引共同确定，标记请求的位置
     - 调度策略
-        - 当 match_req_scheduler 从 Job PE 接收到一组（LAZY_LEN）个 Match Request 后，并且所有 Match Request Channel 的 ready 信号都就位后开始调度
+        - 当 match_req_scheduler 从 Job PE 接收到一组（LAZY_LEN）个 Match Request 后开始调度
         - 要求根据每个 Match Request 的 router_mask 尽可能短的完成到 Match Request Channel 的调度
         - 完成一组 Match Request 调度再后等待处理下一组 
 */
@@ -29,7 +29,7 @@ match_req_scheduler
 module match_req_scheduler #(
     parameter LAZY_LEN = `LAZY_LEN,                       // The number of Match Requests in a group
     parameter M        = `NUM_MATCH_REQ_CH,               // The number of Match PEs
-    parameter TAG_BITS = (`NUM_JOB_PE_LOG2 + `LAZY_LEN_LOG2),
+    parameter TAG_BITS = `LAZY_LEN_LOG2,
     parameter IDX      = 0                                // Scheduler index for tagging
 ) (
     // Input Ports
@@ -140,7 +140,7 @@ module match_req_scheduler #(
         end
     end
     for(gi = 0; gi < LAZY_LEN; gi = gi+1) begin
-        assign `VEC_SLICE(group_tag, gi, TAG_BITS) = {IDX[`NUM_MATCH_PE_LOG2-1:0], gi[`LAZY_LEN_LOG2-1:0]};
+        assign `VEC_SLICE(group_tag, gi, TAG_BITS) = gi[`LAZY_LEN_LOG2-1:0];
     end
     for(gj = 0; gj < M; gj = gj+1) begin
         assign req_valid[gj] = (state_reg == S_WAIT_REQ) & |current_1h_map_trans[gj];

@@ -1,23 +1,20 @@
 `include "parameters.vh"
 `include "log.vh"
 
-module match_pe #(parameter MATCH_PE_IDX=0) (
+module match_pe #(parameter TAG_BITS = 8) (
 
     input wire clk,
     input wire rst_n,
 
     input wire i_match_req_valid,
     output wire o_match_req_ready,
-    input wire [`NUM_JOB_PE_LOG2-1:0] i_match_req_job_pe_id,
-    input wire [7:0] i_match_req_tag,
+    input wire [TAG_BITS-1:0] i_match_req_tag,
     input wire [`ADDR_WIDTH-1:0] i_match_req_head_addr,
     input wire [`ADDR_WIDTH-1:0] i_match_req_history_addr,
 
-
     output wire o_match_resp_valid,
     input wire i_match_resp_ready,
-    output wire [`NUM_JOB_PE_LOG2-1:0] o_match_resp_job_pe_id,
-    output wire [7:0] o_match_resp_tag,
+    output wire [TAG_BITS-1:0] o_match_resp_tag,
     output wire [`MAX_MATCH_LEN_LOG2:0] o_match_resp_match_len,
 
     input wire [`ADDR_WIDTH-1:0] i_write_addr,
@@ -33,8 +30,7 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     reg scoreboard_occupied_reg [SCOREBOARD_DEPTH-1:0]; // 0-空闲 1-占用
     reg scoreboard_wait_reg [SCOREBOARD_DEPTH-1:0]; // 0-空闲或已在流水线中 1-等待发送到流水线中
     reg scoreboard_done_reg [SCOREBOARD_DEPTH-1:0]; // 0-未完成 1-已完成
-    reg [`NUM_JOB_PE_LOG2-1:0] scoreboard_job_pe_id_reg [SCOREBOARD_DEPTH-1:0]; // 跟踪当前条目的任务来自于哪个 Job PE
-    reg [7:0] scoreboard_tag_reg [SCOREBOARD_DEPTH-1:0]; // Job PE 提供的 Tag，Job PE 使用 Tag 来区分不同的请求，这样就不用把请求的地址传回来去
+    reg [TAG_BITS-1:0] scoreboard_tag_reg [SCOREBOARD_DEPTH-1:0]; // Job PE 提供的 Tag，Job PE 使用 Tag 来区分不同的请求，这样就不用把请求的地址传回来去
     reg [`ADDR_WIDTH-1:0] scoreboard_head_addr_reg [SCOREBOARD_DEPTH-1:0]; // 匹配开始的头地址
     reg [`ADDR_WIDTH-1:0] scoreboard_history_addr_reg [SCOREBOARD_DEPTH-1:0]; // 匹配开始的历史地址
     reg [`MAX_MATCH_LEN_LOG2:0] scoreboard_match_len_reg [SCOREBOARD_DEPTH-1:0]; // 记录匹配长度
@@ -70,7 +66,6 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
     assign o_match_req_ready = !no_free_entry;
     // 响应发送握手逻辑
     assign o_match_resp_valid = has_done_entry;
-    assign o_match_resp_job_pe_id = scoreboard_job_pe_id_reg[first_done_entry];
     assign o_match_resp_tag = scoreboard_tag_reg[first_done_entry];
     assign o_match_resp_match_len = scoreboard_match_len_reg[first_done_entry];
 
@@ -217,7 +212,6 @@ module match_pe #(parameter MATCH_PE_IDX=0) (
                     // 在 PE 收到 match 请求时写入当前条目
                     scoreboard_head_addr_reg[i] <= i_match_req_head_addr;
                     scoreboard_history_addr_reg[i] <= i_match_req_history_addr;
-                    scoreboard_job_pe_id_reg[i] <= i_match_req_job_pe_id;
                     scoreboard_tag_reg[i] <= i_match_req_tag;
                     scoreboard_match_len_reg[i] <= 0;
                     scoreboard_match_contd_reg[i] <= 1;
