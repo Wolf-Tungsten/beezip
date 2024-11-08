@@ -13,7 +13,7 @@ module match_resp_sync #(
     parameter L = `LAZY_LEN,
     parameter C = `NUM_MATCH_REQ_CH,
     parameter TAG_BITS = `LAZY_LEN_LOG2,
-    parameter ML = `MAX_MATCH_LEN_LOG2+1
+    parameter ML = `MATCH_LEN_WIDTH
 ) (
     input wire clk,
     input wire rst_n,

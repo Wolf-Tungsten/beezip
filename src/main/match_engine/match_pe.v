@@ -23,7 +23,7 @@ module match_pe #(parameter TAG_BITS = 8) (
     
 );
 
-    localparam SCOREBOARD_DEPTH = 4;
+    localparam SCOREBOARD_DEPTH = 2;
     localparam SCOREBOARD_ENTRY_INDEX = $clog2(SCOREBOARD_DEPTH);
 
     // scoreboard 数据结构

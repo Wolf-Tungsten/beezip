@@ -10,6 +10,67 @@ ASPLOS 2024 对应版本在 asplos2024_version 分支上。
 
 ## 2. Match Engine 部分
 
+### 2.1 Hash Engine 输出到 Job PE 的数据通路
+
+Hash Engine 到 Job PE 之间的数据通路是 Hash Batch Bus
+
+Hash Batch Bus 由一组 hash_batch_bus_node 组成链式结构，与 Job PE 之间的连接关系如下图所示：
+
+![hash_batch_bus](doc/img/hash_batch_bus.jpg "Hash Batch Bus")
+
+hash_batch_bus_node 的功能如下：
+
+- 每个 hash_batch_bus_node 根据输入的 head_addr 可判断出当前 hash batch 是否属于自己处理的范围，如果是，则将数据转发到自己所连接的 Job PE；否则，将数据转发到下一个 hash_batch_bus_node。
+- 为了避免组合路径过长，hash_batch_bus_node 具有可配置的 PIPED 参数，当 PIPED > 0 时，hash_batch_bus_node 内会实例化深度为 PIPED 的 FIFO。
+- 当 hash_batch_bus_node 内部有 FIFO 时，转发到下一个 hash_batch_bus_node 的数据会先进入 FIFO，然后再从 FIFO 中取出转发到下一个 hash_batch_bus_node，打断组合路径。
+
+### 2.2 Job PE
+
+Job PE 完成 Match Job 内部的串行匹配处理，结构和工作流程图如下：
+
+![job_pe](doc/img/job_pe.jpg "Job PE")
+
+Job PE 的主体由 Job Table 和 Lazy Table 两个表存储结构，以及表结构周围的控制逻辑组成。
+
+功能描述如下：
+
+- 来自 Hash Batch Bus 的 Match Job 装入 Job Table 中
+  - Job Table 刚好容纳一个 Match Job，因此包含 JOB_LEN 个 Job Entry
+  - 每个 Job Entry 包含以下字段
+    - history_valid：指示该位置是存在有效匹配（大于最小匹配长度且offset合法）
+    - history_addr：匹配的历史地址
+    - meta_match_len：metaHistory 提供的匹配长度
+    - meta_match_can_ext：是否需要继续扩展
+    - offset：匹配的偏移量，此处相当于在装载时提前计算了 offset，便于后续使用
+  - Job Table 还附带两个寄存器：
+    - head_addr：记录当前 match job 起始地址
+    - delim：标识当前 match job 是否为猝发的最后一个 job
+- Seek Match Head 逻辑寻找 match job 中下一个有效的 Job Entry
+  - seq_head_ptr_reg 寄存器指向下一个 seq 起始的地址，相对于 Match Job
+  - match_head_ptr_reg 寄存器指向下一个 match 起始的地址，相对于 Match Job
+  - 那么 lit_len = match_head_ptr_reg - seq_head_ptr_reg
+  - 因此 Seek Match Head 逻辑主要负责更新 match_head_ptr_reg，从 seq_head_ptr_reg 开始移动，直到所指向条目的 history_valid 有效
+  - 为了高效查找，支持一次性跳过多个无效条目（8-4-2-1组合）
+  - 如果 match_head_ptr_reg 指向了 Job Table 的末尾仍然不能找到有效条目，则认为当前 Match Job 已经处理完毕，输出一个 match_len 为 0 的结果
+  - 如果 match_head_ptr_reg 找到了有效条目，则将该条目开始的 LAZY_LEN 个条目装载到 Lazy Table 中
+- Lazy Table 包含了 Job Table 中 match_head_ptr_reg 指向的 Job Entry 开始的 LAZY_LEN 个 Job Entry
+  - Lazy Table 的结构与 Job Table 稍有不同，每个条目的字段如下：
+    - valid：指示条目是否包含有效匹配
+    - pending：指示条目是否需要进一步扩展请求
+    - idx：当前条目在 Job Table 中的相对索引(该字段目前仅用于调试目的)
+    - head_addr：该条目对应匹配起始的地址，装载时已经增加了 metaHistory 偏移
+    - history_addr：该条目对应匹配的历史地址，装载时已经增加了 metaHistory 偏移
+    - match_len：装载时等于 meta match len，如需扩展则结果累加
+    - offset：记录匹配的offset，用于后续 gain 的计算
+- Lazy Table 中的条目，如果 valid 且 匹配长度等于 META_LEN，则需要进一步扩展，pending 位为 1
+- Lazy Table 中 pending 的条目需要发起 Lazy Match 请求，交给 Match PE 处理，Job PE 通过 match_req_group 和 match_resp_group 通道发起和接受响应
+  - 一个 group 请求中包含 LAZY_LEN 个子请求
+  - 每个子请求都有一个 router_map 指示其应该被路由到哪个 Match PE
+  - 每个子请求都有一个 strb 位标识其是否有效，只有有效的请求需要处理
+- 收到来自 match_resp_group 的请求后，Lazy Table 的 match_len 会被更新，得到最终的匹配结果
+- lazy_summary_pipeline 对 Lazy Table 中的结果进行汇总，根据 gain 计算规则选出最优的匹配，输出 seq
+- 完成 seq 输出后，将更新 seq_head_ptr，判断是否当前 Match Job 已经处理完毕，转向下一个 Match Job 或者继续处理当前 Match Job。
+
 ### 2.1 支持非对齐访存的 Window Buffer
 
 ### 2.2 Match PE 中的 Scoreboard
@@ -20,7 +81,6 @@ ASPLOS 2024 对应版本在 asplos2024_version 分支上。
 - [`scoreboard_occupied_reg`](src/main/match_engine/match_pe.v)：标记每个条目是否被占用（0-空闲，1-占用）。
 - [`scoreboard_wait_reg`](src/main/match_engine/match_pe.v)：标记每个条目是否在等待发送到流水线中（0-空闲或已在流水线中，1-等待发送）。
 - [`scoreboard_done_reg`](src/main/match_engine/match_pe.v)：标记每个条目的处理是否完成（0-未完成，1-已完成）。
-- [`scoreboard_job_pe_id_reg`](src/main/match_engine/match_pe.v)：跟踪当前条目的任务来自于哪个 Job PE。
 - [`scoreboard_tag_reg`](src/main/match_engine/match_pe.v)：存储 Job PE 提供的 Tag，用于区分不同的请求。
 - [`scoreboard_head_addr_reg`](src/main/match_engine/match_pe.v)：存储匹配开始的头地址。
 - [`scoreboard_history_addr_reg`](src/main/match_engine/match_pe.v)：存储匹配开始的历史地址。

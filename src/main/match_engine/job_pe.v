@@ -1,3 +1,12 @@
+/**
+  job_pe
+
+  - 功能简述
+    - 从 Hash Engine 接收 Match Job
+    - 在 Match Job 内部进行串行处理，将仍然需要匹配的请求发送到 match_pe
+    - 利用 lazy_summary_pipeline 汇总最优结果
+    - 将最优结果通过 seq port 发出
+*/
 `include "parameters.vh"
 `include "util.vh"
 `include "log.vh"
@@ -26,17 +35,16 @@ module job_pe (
     input wire seq_ready,
 
     // match request port
-    output wire match_req_valid,
-    output wire [`ADDR_WIDTH-1:0] match_req_head_addr,
-    output reg [`ADDR_WIDTH-1:0] match_req_history_addr,
-    output reg [`LAZY_MATCH_LEN-1:0] match_req_tag,
-    input wire match_req_ready,
+    output wire match_req_group_valid,
+    output wire [`LAZY_LEN*`ADDR_WIDTH-1:0] match_req_group_head_addr,
+    output reg [`LAZY_LEN*`ADDR_WIDTH-1:0] match_req_group_history_addr,
+    output reg [`LAZY_LEN*`NUM_MATCH_REQ_CH-1:0] match_req_group_router_map,
+    output reg [`LAZY_LEN-1:0] match_req_group_strb,
+    input wire match_req_group_ready,
 
-    // match resp port
-    input wire match_resp_valid,
-    input wire [`MATCH_LEN_WIDTH-1:0] match_resp_len,
-    input wire [`LAZY_MATCH_LEN-1:0] match_resp_tag,
-    output wire match_resp_ready
+    input wire match_resp_group_valid,
+    output wire match_resp_group_ready,
+    input wire [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] match_resp_group_match_len
 );
 
   localparam LAZY_GAIN_BITS = `MATCH_LEN_WIDTH + 3;
@@ -52,9 +60,10 @@ module job_pe (
   // state machine
   localparam S_LOAD = 3'b001;
   localparam S_SEEK_MATCH_HEAD = 3'b010;
-  localparam S_LAZY_MATCH = 3'b011;
-  localparam S_LAZY_SUMMARY = 3'b100;
-  localparam S_LIT_TAIL = 3'b101;
+  localparam S_LAZY_MATCH_REQ = 3'b011;
+  localparam S_LAZY_MATCH_RESP = 3'b100;
+  localparam S_LAZY_SUMMARY = 3'b101;
+  localparam S_LIT_TAIL = 3'b110;
   reg [2:0] state_reg;
 
   // load part logic
@@ -133,16 +142,13 @@ module job_pe (
 
   
   // lazy match part logic
-  reg lazy_tbl_done_reg;
-  reg lazy_tbl_requested_reg;
-  reg [`LAZY_MATCH_LEN-1:0] lazy_tbl_valid_reg;
-  reg [`LAZY_MATCH_LEN-1:0] lazy_tbl_pending_reg;
-  reg [`LAZY_MATCH_LEN*`JOB_LEN_LOG2-1:0] lazy_tbl_idx_reg;
-  reg [`LAZY_MATCH_LEN*`ADDR_WIDTH-1:0] lazy_tbl_head_addr_reg;
-  reg [`LAZY_MATCH_LEN*`ADDR_WIDTH-1:0] lazy_tbl_history_addr_reg;
-  reg [`LAZY_MATCH_LEN*`MATCH_LEN_WIDTH-1:0] lazy_tbl_match_len_reg;
-  reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS-1:0] lazy_tbl_offset_reg;
-
+  reg [`LAZY_LEN-1:0] lazy_tbl_valid_reg;
+  reg [`LAZY_LEN-1:0] lazy_tbl_pending_reg;
+  reg [`LAZY_LEN*`JOB_LEN_LOG2-1:0] lazy_tbl_idx_reg;
+  reg [`LAZY_LEN*`ADDR_WIDTH-1:0] lazy_tbl_head_addr_reg;
+  reg [`LAZY_LEN*`ADDR_WIDTH-1:0] lazy_tbl_history_addr_reg;
+  reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] lazy_tbl_match_len_reg;
+  reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] lazy_tbl_offset_reg;
   function automatic [`JOB_LEN_LOG2-1:0] match_head_relative_idx;
     input integer idx;
     begin
@@ -150,20 +156,10 @@ module job_pe (
     end
   endfunction
 
-  wire [`LAZY_MATCH_LEN-1:0] lazy_match_req_sel;
-  priority_selector #(
-    .W(`LAZY_MATCH_LEN)
-  ) lazy_match_req_sel_inst (
-    .input_vec(lazy_tbl_pending_reg),
-    .output_vec(lazy_match_req_sel)
-  );
-  
   always @(posedge clk) begin
     if(state_reg == S_SEEK_MATCH_HEAD && job_tbl_history_valid_reg[match_head_ptr_reg]) begin
-      lazy_tbl_done_reg <= 1'b0;
-      lazy_tbl_requested_reg <= 1'b0;
       $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD load match_head=%d into lazy tbl", $time, match_head_ptr_reg);
-      for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
+      for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
         if({1'b0, match_head_ptr_reg} + i[`JOB_LEN_LOG2+1-1:0] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)];
           lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)];
@@ -182,48 +178,34 @@ module job_pe (
           `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS),
           `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH),
           );
-
         end else begin
           lazy_tbl_valid_reg[i] <= 1'b0;
           lazy_tbl_pending_reg[i] <= 1'b0;
           `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= '0;
         end
       end
-    end if (state_reg == S_LAZY_MATCH) begin
-      if(match_req_valid && match_req_ready) begin
-        // 请求发送成功，将 requested 寄存器置1
-        $display("[job_pe @ %0t] S_LAZY_MATCH match_req_head_addr=%d, match_req_history_addr=%d, match_req_tag=%b", $time, match_req_head_addr, match_req_history_addr, match_req_tag);
-        lazy_tbl_requested_reg <= 1'b1;
-      end
-      if(match_resp_valid && match_resp_ready) begin
-        // 响应接收成功，将 done 寄存器对应位置置一
-        // 并且将 match_len 累加
-        lazy_tbl_done_reg <= 1'b1;
-        for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
-          if(match_resp_tag[i]) begin
-            `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) + match_resp_len;
-          end
+    end else if (state_reg == S_LAZY_MATCH_RESP && match_resp_group_valid) begin
+      for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+        if(lazy_tbl_pending_reg[i]) begin
+          $display("[job_pe @ %0t] S_LAZY_MATCH_RESP lazy_tbl[%0d] match_len=%d", $time, i, `VEC_SLICE(match_resp_group_match_len, i, `MATCH_LEN_WIDTH));
+          `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) + `VEC_SLICE(match_resp_group_match_len, i, `MATCH_LEN_WIDTH);
         end
       end
     end
   end
 
-  assign match_req_valid = (state_reg == S_LAZY_MATCH) && (|lazy_tbl_pending_reg) && ~lazy_tbl_requested_reg;
-  mux1h #(.P_CNT(`LAZY_MATCH_LEN), .P_W(`ADDR_WIDTH)) match_req_head_addr_mux (
-    .input_payload_vec(lazy_tbl_head_addr_reg),
-    .input_select_vec(lazy_match_req_sel),
-    .output_payload(match_req_head_addr)
+  assign match_req_group_valid = (state_reg == S_LAZY_MATCH_REQ) && (|lazy_tbl_pending_reg);
+  assign match_req_group_head_addr = lazy_tbl_head_addr_reg;
+  assign match_req_group_history_addr = lazy_tbl_history_addr_reg;
+  assign match_req_group_strb = lazy_tbl_pending_reg;
+  match_req_route_table mrrt(
+    .offset(lazy_tbl_offset_reg),
+    .route_map(match_req_group_router_map)
   );
-  mux1h #(.P_CNT(`LAZY_MATCH_LEN), .P_W(`ADDR_WIDTH)) match_req_history_addr_mux (
-    .input_payload_vec(lazy_tbl_history_addr_reg),
-    .input_select_vec(lazy_match_req_sel),
-    .output_payload(match_req_history_addr)
-  );
-  assign match_req_tag = lazy_match_req_sel;
 
-  assign match_resp_ready = (state_reg == S_LAZY_MATCH) && ~lazy_tbl_done_reg;
+  assign match_resp_group_ready = state_reg == S_LAZY_MATCH_RESP;
 
-  // lazy summary part logi
+  // lazy summary part logic
   wire lazy_summary_done, lazy_summary_seq_eoj, lazy_summary_overlap_len, lazy_summary_seq_delim, move_to_next_job;
   wire [`JOB_LEN_LOG2-1:0] move_forward;
   wire [`SEQ_LL_BITS-1:0] lazy_summary_seq_ll;
@@ -234,7 +216,7 @@ module job_pe (
   lazy_summary_pipeline lsp_inst(
     .clk(clk),
     
-    .i_match_done((state_reg == S_LAZY_MATCH & ((&(~lazy_tbl_pending_reg)) | lazy_tbl_done_reg)) | state_reg == S_LAZY_SUMMARY ),
+    .i_match_done((state_reg == S_LAZY_MATCH_REQ & (&(~lazy_tbl_pending_reg))) | state_reg == S_LAZY_SUMMARY ),
     .i_match_head_ptr(match_head_ptr_reg),
     .i_seq_head_ptr(seq_head_ptr_reg),
     .i_delim(job_delim_reg),
@@ -299,13 +281,20 @@ module job_pe (
         end
         S_SEEK_MATCH_HEAD: begin
           if (job_tbl_history_valid_reg[match_head_ptr_reg]) begin
-            state_reg <= S_LAZY_MATCH;
+            state_reg <= S_LAZY_MATCH_REQ;
           end else if (match_head_ptr_reg == `JOB_LEN - 1) begin
             state_reg <= S_LIT_TAIL;
           end
         end
-        S_LAZY_MATCH: begin
-          if ((match_resp_valid && match_resp_ready) | ~(|lazy_tbl_pending_reg)) begin
+        S_LAZY_MATCH_REQ: begin
+          if (((|lazy_tbl_pending_reg) && match_req_group_ready)) begin
+            state_reg <= S_LAZY_MATCH_RESP;
+          end else if (~(|lazy_tbl_pending_reg)) begin
+            state_reg <= S_LAZY_SUMMARY;
+          end
+        end
+        S_LAZY_MATCH_RESP: begin
+          if (match_resp_group_valid) begin
             state_reg <= S_LAZY_SUMMARY;
           end
         end

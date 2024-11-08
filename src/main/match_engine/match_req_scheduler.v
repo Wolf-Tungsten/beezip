@@ -3,7 +3,7 @@ match_req_scheduler
 
 - 功能描述：
 
-    - Job PE 通过一个 Match Request Group Channel 将 LAZY_LEN 个 Match Request 打包发送到 match_req_scheduler
+    - Job PE 通过一个 Match Request Group Channel 将最多 LAZY_LEN 个 Match Request 打包发送到 match_req_scheduler
     - match_req_scheduler 通过 M 个独立握手的 Match Request Channel 与 M 个 Match PE 通信
     - match_req_scheduler 的主要功能是将 Match Request Group Channel 中的 Match Request 调度到 Match Request Channel 上
     - Match Request 的组成
@@ -37,25 +37,25 @@ module match_req_scheduler #(
     input wire rst_n,
 
     // Match Request Group Channel Ports from Job PE to match_req_scheduler
-    input  wire                              group_valid,
-    output wire                              group_ready,
-    input  wire [(LAZY_LEN*`ADDR_WIDTH)-1:0] group_head_addr,
-    input  wire [(LAZY_LEN*`ADDR_WIDTH)-1:0] group_history_addr,
-    input  wire [          (LAZY_LEN*M)-1:0] group_router_mask,
-    input  wire [              LAZY_LEN-1:0] group_strb,
+    input  wire                              match_req_group_valid,
+    output wire                              match_req_group_ready,
+    input  wire [(LAZY_LEN*`ADDR_WIDTH)-1:0] match_req_group_head_addr,
+    input  wire [(LAZY_LEN*`ADDR_WIDTH)-1:0] match_req_group_history_addr,
+    input  wire [          (LAZY_LEN*M)-1:0] match_req_group_router_map,
+    input  wire [              LAZY_LEN-1:0] match_req_group_strb,
 
     // Match Request Channel Ports from match_req_scheduler to match_pe
-    output wire [            M-1:0] req_valid,
-    input  wire [            M-1:0] req_ready,
-    output wire [M*`ADDR_WIDTH-1:0] req_head_addr,
-    output wire [M*`ADDR_WIDTH-1:0] req_history_addr,
-    output wire [   M*TAG_BITS-1:0] req_tag
+    output wire [            M-1:0] match_req_valid,
+    input  wire [            M-1:0] match_req_ready,
+    output wire [M*`ADDR_WIDTH-1:0] match_req_head_addr,
+    output wire [M*`ADDR_WIDTH-1:0] match_req_history_addr,
+    output wire [   M*TAG_BITS-1:0] match_req_tag
 );
 
     reg [LAZY_LEN-1:0] pending_reg;
     reg [LAZY_LEN*`ADDR_WIDTH-1:0] head_addr_reg;
     reg [LAZY_LEN*`ADDR_WIDTH-1:0] history_addr_reg;
-    reg [LAZY_LEN*M-1:0] router_mask_reg;
+    reg [LAZY_LEN*M-1:0] router_map_reg;
 
     localparam S_WAIT_REQ = 3'b001;
     localparam S_SCHED = 3'b010;
@@ -67,7 +67,7 @@ module match_req_scheduler #(
         end else begin
             case(state_reg)
             S_WAIT_REQ: begin
-                if(group_valid) begin
+                if(match_req_group_valid) begin
                     state_reg <= S_SCHED;
                 end
             end
@@ -83,12 +83,12 @@ module match_req_scheduler #(
         end
     end 
 
-    assign group_ready = state_reg == S_WAIT_REQ;
+    assign match_req_group_ready = state_reg == S_WAIT_REQ;
     always @(posedge clk) begin
         if(state_reg == S_WAIT_REQ) begin
-            head_addr_reg <= group_head_addr;
-            history_addr_reg <= group_history_addr;
-            router_mask_reg <= group_router_mask;
+            head_addr_reg <= match_req_group_head_addr;
+            history_addr_reg <= match_req_group_history_addr;
+            router_map_reg <= match_req_group_router_map;
         end
     end
 
@@ -104,8 +104,8 @@ module match_req_scheduler #(
   - 对于后续的请求，prev_occupied_map[i] = prev_occupied_map[i-1] | current_1h_map[i-1]，表示当前请求之前的所有请求占用的通道
   - current_avaliable_map[i] 的计算方法
     - pending_reg[i]: 只有 pending 信号为 1 的请求才能被调度
-    - req_ready: 只有处于 req_ready 状态的 ch 才能接受请求
-    - router_mask_reg: 请求的 router mask 确定请求能被哪些 ch 处理
+    - match_req_ready: 只有处于 match_req_ready 状态的 ch 才能接受请求
+    - router_map_reg: 请求的 router mask 确定请求能被哪些 ch 处理
     - ~prev_occupied_map[i]: 只能发送到之前没有被占用的 ch
   - 从 current_avaliable_map[i] 可以计算出
     - current_1h_map[i]：当前请求最终被哪个 ch 接受，选择最低有效位
@@ -125,7 +125,7 @@ module match_req_scheduler #(
         prev_occupied_map[0] = '0;
         for (i = 1; i < LAZY_LEN; i = i + 1) begin
             prev_occupied_map[i] = prev_occupied_map[i-1] | current_1h_map[i-1];
-            current_avaliable_map[i] = {M{pending_reg[i]}} & req_ready & `VEC_SLICE(router_mask_reg, i, M) & ~prev_occupied_map[i];
+            current_avaliable_map[i] = {M{pending_reg[i]}} & match_req_ready & `VEC_SLICE(router_map_reg, i, M) & ~prev_occupied_map[i];
         end
     end
 
@@ -143,21 +143,21 @@ module match_req_scheduler #(
         assign `VEC_SLICE(group_tag, gi, TAG_BITS) = gi[`LAZY_LEN_LOG2-1:0];
     end
     for(gj = 0; gj < M; gj = gj+1) begin
-        assign req_valid[gj] = (state_reg == S_WAIT_REQ) & |current_1h_map_trans[gj];
+        assign match_req_valid[gj] = (state_reg == S_WAIT_REQ) & |current_1h_map_trans[gj];
         mux1h #(.P_CNT(LAZY_LEN), .P_W(`ADDR_WIDTH)) head_addr_sel (
             .input_payload_vec(head_addr_reg),
             .input_select_vec(current_1h_map_trans[gj]),
-            .output_payload(`VEC_SLICE(req_head_addr, gj, `ADDR_WIDTH))
+            .output_payload(`VEC_SLICE(match_req_head_addr, gj, `ADDR_WIDTH))
         );
         mux1h #(.P_CNT(LAZY_LEN), .P_W(`ADDR_WIDTH)) history_addr_sel (
             .input_payload_vec(history_addr_reg),
             .input_select_vec(current_1h_map_trans[gj]),
-            .output_payload(`VEC_SLICE(req_history_addr, gj, `ADDR_WIDTH))
+            .output_payload(`VEC_SLICE(match_req_history_addr, gj, `ADDR_WIDTH))
         );
         mux1h #(.P_CNT(LAZY_LEN), .P_W(TAG_BITS)) tag_sel (
             .input_payload_vec(group_tag),
             .input_select_vec(current_1h_map_trans[gj]),
-            .output_payload(`VEC_SLICE(req_tag, gj, TAG_BITS))
+            .output_payload(`VEC_SLICE(match_req_tag, gj, TAG_BITS))
         );
     end
   endgenerate
@@ -167,7 +167,7 @@ module match_req_scheduler #(
         pending_reg <= '0;
     end else begin
         if (state_reg == S_WAIT_REQ) begin
-            pending_reg <= group_strb;
+            pending_reg <= match_req_group_strb;
         end else if (state_reg == S_SCHED) begin
             pending_reg <= pending_reg & ~current_issue;
         end

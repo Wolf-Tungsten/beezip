@@ -8,9 +8,9 @@ module lazy_summary_pipeline (
     input wire [`JOB_LEN_LOG2-1:0] i_match_head_ptr,
     input wire [`JOB_LEN_LOG2-1:0] i_seq_head_ptr,
     input wire i_delim,
-    input wire [`LAZY_MATCH_LEN-1:0] i_match_valid,
-    input wire [`LAZY_MATCH_LEN*`MATCH_LEN_WIDTH-1:0] i_match_len,
-    input wire [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS-1:0] i_offset,
+    input wire [`LAZY_LEN-1:0] i_match_valid,
+    input wire [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] i_match_len,
+    input wire [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] i_offset,
 
     output wire o_summary_done,
     output wire [`JOB_LEN_LOG2-1:0] o_seq_head_ptr,
@@ -30,15 +30,15 @@ module lazy_summary_pipeline (
     reg s0_match_done_reg;
     reg [`JOB_LEN_LOG2-1:0] s0_seq_head_ptr_reg;
     reg s0_delim_reg;
-    reg [`LAZY_MATCH_LEN-1:0] s0_match_valid_reg;
-    reg [`LAZY_MATCH_LEN*`JOB_LEN_LOG2-1:0] s0_ll_reg;
-    reg [`LAZY_MATCH_LEN*`MATCH_LEN_WIDTH-1:0] s0_match_len_reg;
-    reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS-1:0] s0_offset_reg;
-    reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits_reg;
-    reg signed [`LAZY_MATCH_LEN*GAIN_BITS-1:0] s0_gain_reg;
+    reg [`LAZY_LEN-1:0] s0_match_valid_reg;
+    reg [`LAZY_LEN*`JOB_LEN_LOG2-1:0] s0_ll_reg;
+    reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s0_match_len_reg;
+    reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s0_offset_reg;
+    reg [`LAZY_LEN*`SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits_reg;
+    reg signed [`LAZY_LEN*GAIN_BITS-1:0] s0_gain_reg;
 
-    wire [`LAZY_MATCH_LEN * `SEQ_OFFSET_BITS_LOG2-1:0] reversed_offset_bits;
-    wire [`LAZY_MATCH_LEN * `SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits;
+    wire [`LAZY_LEN * `SEQ_OFFSET_BITS_LOG2-1:0] reversed_offset_bits;
+    wire [`LAZY_LEN * `SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits;
     function  automatic  [`SEQ_OFFSET_BITS-1:0] reverse_offset (
         input [`SEQ_OFFSET_BITS-1:0] offset
     );
@@ -49,7 +49,7 @@ module lazy_summary_pipeline (
     endfunction
     genvar g_i;
     generate
-        for(g_i = 0; g_i < `LAZY_MATCH_LEN; g_i = g_i + 1) begin: OFFSET_BITS_GEN
+        for(g_i = 0; g_i < `LAZY_LEN; g_i = g_i + 1) begin: OFFSET_BITS_GEN
         /* verilator lint_off PINCONNECTEMPTY */
         priority_encoder #(`SEQ_OFFSET_BITS) offset_bits_enc (
             .input_vec(reverse_offset(`VEC_SLICE(i_offset, g_i, `SEQ_OFFSET_BITS))),
@@ -68,10 +68,10 @@ module lazy_summary_pipeline (
         s0_match_len_reg <= i_match_len;
         s0_offset_bits_reg <= s0_offset_bits;
         s0_offset_reg <= i_offset;
-        for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2) <= i_match_head_ptr - i_seq_head_ptr + i[`JOB_LEN_LOG2-1:0];
             `VEC_SLICE(s0_gain_reg, i, GAIN_BITS) <= `ZERO_EXTEND({`VEC_SLICE(i_match_len, i, `MATCH_LEN_WIDTH), 2'b0}, GAIN_BITS)
-            + {4 * (`LAZY_MATCH_LEN - i)}[GAIN_BITS-1:0];
+            + {4 * (`LAZY_LEN - i)}[GAIN_BITS-1:0];
         end
     end
 
@@ -80,12 +80,12 @@ module lazy_summary_pipeline (
     reg s1_match_done_reg;
     reg [`JOB_LEN_LOG2-1:0] s1_seq_head_ptr_reg;
     reg s1_delim_reg;
-    reg [`LAZY_MATCH_LEN-1:0] s1_match_valid_reg;
-    reg [`LAZY_MATCH_LEN*`JOB_LEN_LOG2-1:0] s1_ll_reg;
-    reg [`LAZY_MATCH_LEN*`MATCH_LEN_WIDTH-1:0] s1_match_len_reg;
-    reg [`LAZY_MATCH_LEN*`SEQ_OFFSET_BITS-1:0] s1_offset_reg;
-    reg [`LAZY_MATCH_LEN*(`MATCH_LEN_WIDTH+1)-1:0] s1_move_forward_reg; 
-    reg signed [`LAZY_MATCH_LEN*GAIN_BITS-1:0] s1_gain_reg;
+    reg [`LAZY_LEN-1:0] s1_match_valid_reg;
+    reg [`LAZY_LEN*`JOB_LEN_LOG2-1:0] s1_ll_reg;
+    reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_match_len_reg;
+    reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s1_offset_reg;
+    reg [`LAZY_LEN*(`MATCH_LEN_WIDTH+1)-1:0] s1_move_forward_reg; 
+    reg signed [`LAZY_LEN*GAIN_BITS-1:0] s1_gain_reg;
 
     always @(posedge clk) begin
         s1_match_done_reg <= s0_match_done_reg;
@@ -95,7 +95,7 @@ module lazy_summary_pipeline (
         s1_match_len_reg <= s0_match_len_reg;
         s1_offset_reg <= s0_offset_reg;
         s1_ll_reg <= s0_ll_reg;
-        for(integer i = 0; i < `LAZY_MATCH_LEN; i = i + 1) begin
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s1_gain_reg, i, GAIN_BITS) <= `VEC_SLICE(s0_gain_reg, i, GAIN_BITS)
             - `ZERO_EXTEND(`VEC_SLICE(s0_offset_bits_reg, i, `SEQ_OFFSET_BITS_LOG2), GAIN_BITS);
             `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH+1) <= `VEC_SLICE(s0_match_len_reg, i, `MATCH_LEN_WIDTH) + 
@@ -117,7 +117,7 @@ module lazy_summary_pipeline (
         best_offset = `VEC_SLICE(s1_offset_reg, 0, `SEQ_OFFSET_BITS);
         best_gain = `VEC_SLICE(s1_gain_reg, 0, GAIN_BITS);
         best_move_forward = `VEC_SLICE(s1_move_forward_reg, 0, `MATCH_LEN_WIDTH+1);
-        for(integer i = 1; i < `LAZY_MATCH_LEN; i = i + 1) begin
+        for(integer i = 1; i < `LAZY_LEN; i = i + 1) begin
             if(s1_match_valid_reg[i]) begin
                 if(~best_valid | (`VEC_SLICE(s1_gain_reg, i, GAIN_BITS) > best_gain)) begin
                     best_valid = 1'b1;
