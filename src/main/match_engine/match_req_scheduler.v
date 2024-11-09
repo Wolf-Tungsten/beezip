@@ -28,9 +28,7 @@ match_req_scheduler
 
 module match_req_scheduler #(
     parameter LAZY_LEN = `LAZY_LEN,                       // The number of Match Requests in a group
-    parameter M        = `NUM_MATCH_REQ_CH,               // The number of Match PEs
-    parameter TAG_BITS = `LAZY_LEN_LOG2,
-    parameter IDX      = 0                                // Scheduler index for tagging
+    parameter M        = `NUM_MATCH_REQ_CH               // The number of Match Req Channal
 ) (
     // Input Ports
     input wire clk,
@@ -49,7 +47,7 @@ module match_req_scheduler #(
     input  wire [            M-1:0] match_req_ready,
     output wire [M*`ADDR_WIDTH-1:0] match_req_head_addr,
     output wire [M*`ADDR_WIDTH-1:0] match_req_history_addr,
-    output wire [   M*TAG_BITS-1:0] match_req_tag
+    output wire [   M*`LAZY_LEN_LOG2-1:0] match_req_tag
 );
 
     reg [LAZY_LEN-1:0] pending_reg;
@@ -116,7 +114,7 @@ module match_req_scheduler #(
     wire [M-1:0] current_1h_map [LAZY_LEN-1:0];
     wire [LAZY_LEN-1:0] current_1h_map_trans [M-1:0];
     wire [LAZY_LEN-1:0] current_issue;
-    wire [TAG_BITS*LAZY_LEN-1:0] group_tag;
+    wire [`LAZY_LEN_LOG2*LAZY_LEN-1:0] group_tag;
 
   
     integer i;
@@ -140,7 +138,7 @@ module match_req_scheduler #(
         end
     end
     for(gi = 0; gi < LAZY_LEN; gi = gi+1) begin
-        assign `VEC_SLICE(group_tag, gi, TAG_BITS) = gi[`LAZY_LEN_LOG2-1:0];
+        assign `VEC_SLICE(group_tag, gi, `LAZY_LEN_LOG2) = gi[`LAZY_LEN_LOG2-1:0];
     end
     for(gj = 0; gj < M; gj = gj+1) begin
         assign match_req_valid[gj] = (state_reg == S_WAIT_REQ) & |current_1h_map_trans[gj];
@@ -154,10 +152,10 @@ module match_req_scheduler #(
             .input_select_vec(current_1h_map_trans[gj]),
             .output_payload(`VEC_SLICE(match_req_history_addr, gj, `ADDR_WIDTH))
         );
-        mux1h #(.P_CNT(LAZY_LEN), .P_W(TAG_BITS)) tag_sel (
+        mux1h #(.P_CNT(LAZY_LEN), .P_W(`LAZY_LEN_LOG2)) tag_sel (
             .input_payload_vec(group_tag),
             .input_select_vec(current_1h_map_trans[gj]),
-            .output_payload(`VEC_SLICE(match_req_tag, gj, TAG_BITS))
+            .output_payload(`VEC_SLICE(match_req_tag, gj, `LAZY_LEN_LOG2))
         );
     end
   endgenerate
