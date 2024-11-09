@@ -10,13 +10,13 @@ module match_req_route_table (
     
 
     assign channel_lower_bound[0] = 0;
-    assign channel_upper_bound[0] = 1 << 12; // 4 KB
+    assign channel_upper_bound[0] = `MATCH_PE_SIZE(0);
     assign channel_lower_bound[1] = 0;
-    assign channel_upper_bound[1] = 1 << 16; // 64 KB
+    assign channel_upper_bound[1] = `MATCH_PE_SIZE(1); // 32 KB
     assign channel_lower_bound[2] = 0;
-    assign channel_upper_bound[2] = 1 << 15; // 64 KB
-    assign channel_lower_bound[3] = 1 << 15;
-    assign channel_upper_bound[3] = 1 << 20; // 1 MB
+    assign channel_upper_bound[2] = `MATCH_PE_SIZE(2); // 64 KB
+    assign channel_lower_bound[3] = `MATCH_PE_SIZE(2);
+    assign channel_upper_bound[3] = `MATCH_PE_SIZE(3); // 1 MB
 
     genvar i, j;
     generate

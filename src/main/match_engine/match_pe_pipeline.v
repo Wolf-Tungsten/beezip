@@ -1,7 +1,7 @@
 `include "parameters.vh"
 `include "util.vh"
 
-module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3) (
+module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LOG2=15) (
     input wire clk,
     input wire rst_n,
 
@@ -25,7 +25,7 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3) (
     wire hist_buf_read_unsafe, head_buf_read_unsafe;
     wire [`MATCH_PE_WIDTH*8-1:0] hist_buf_read_data, head_buf_read_data;
 
-    window_buffer #(.SIZE_BYTES_LOG2(`MATCH_PE_DEPTH_LOG2), .NBPIPE(NBPIPE)) history_buffer (
+    window_buffer #(.SIZE_BYTES_LOG2(SIZE_LOG2), .NBPIPE(NBPIPE)) history_buffer (
         .clk(clk),
         .rst_n(rst_n),
         .write_enable(i_write_enable),
@@ -38,7 +38,7 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3) (
         .read_data(hist_buf_read_data)
     );
 
-    window_buffer #(.SIZE_BYTES_LOG2(`MAX_MATCH_LEN_LOG2), .NBPIPE(NBPIPE)) head_buffer (
+    window_buffer #(.SIZE_BYTES_LOG2(`MAX_MATCH_LEN_LOG2 + 1), .NBPIPE(NBPIPE)) head_buffer (
         .clk(clk),
         .rst_n(rst_n),
         .write_enable(1'b1),

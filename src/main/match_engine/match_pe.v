@@ -1,25 +1,25 @@
 `include "parameters.vh"
 `include "log.vh"
 
-module match_pe #(parameter TAG_BITS = 8) (
+module match_pe #(parameter TAG_BITS = 8, SIZE_LOG2 = 15) (
 
     input wire clk,
     input wire rst_n,
 
-    input wire i_match_req_valid,
-    output wire o_match_req_ready,
-    input wire [TAG_BITS-1:0] i_match_req_tag,
-    input wire [`ADDR_WIDTH-1:0] i_match_req_head_addr,
-    input wire [`ADDR_WIDTH-1:0] i_match_req_history_addr,
+    input wire match_req_valid,
+    output wire match_req_ready,
+    input wire [TAG_BITS-1:0] match_req_tag,
+    input wire [`ADDR_WIDTH-1:0] match_req_head_addr,
+    input wire [`ADDR_WIDTH-1:0] match_req_history_addr,
 
-    output wire o_match_resp_valid,
-    input wire i_match_resp_ready,
-    output wire [TAG_BITS-1:0] o_match_resp_tag,
-    output wire [`MAX_MATCH_LEN_LOG2:0] o_match_resp_match_len,
+    output wire match_resp_valid,
+    input wire match_resp_ready,
+    output wire [TAG_BITS-1:0] match_resp_tag,
+    output wire [`MAX_MATCH_LEN_LOG2:0] match_resp_match_len,
 
-    input wire [`ADDR_WIDTH-1:0] i_write_addr,
-    input wire [`MATCH_PE_WIDTH*8-1:0] i_write_data,
-    input wire i_write_enable
+    input wire [`ADDR_WIDTH-1:0] write_addr,
+    input wire [`MATCH_PE_WIDTH*8-1:0] write_data,
+    input wire write_enable
     
 );
 
@@ -63,11 +63,11 @@ module match_pe #(parameter TAG_BITS = 8) (
     end
 
     // 请求接收握手逻辑
-    assign o_match_req_ready = !no_free_entry;
+    assign match_req_ready = !no_free_entry;
     // 响应发送握手逻辑
-    assign o_match_resp_valid = has_done_entry;
-    assign o_match_resp_tag = scoreboard_tag_reg[first_done_entry];
-    assign o_match_resp_match_len = scoreboard_match_len_reg[first_done_entry];
+    assign match_resp_valid = has_done_entry;
+    assign match_resp_tag = scoreboard_tag_reg[first_done_entry];
+    assign match_resp_match_len = scoreboard_match_len_reg[first_done_entry];
 
     // 猝发计数器
     reg [`ADDR_WIDTH-1:0] burst_addr_bias_reg;
@@ -104,7 +104,7 @@ module match_pe #(parameter TAG_BITS = 8) (
     wire [`MAX_MATCH_LEN_LOG2:0] pipeline_o_match_len;
 
     // 实例化流水线
-    match_pe_pipeline #(.SCOREBOARD_ENTRY_INDEX(SCOREBOARD_ENTRY_INDEX), .NBPIPE(3)) pipeline (
+    match_pe_pipeline #(.SCOREBOARD_ENTRY_INDEX(SCOREBOARD_ENTRY_INDEX), .NBPIPE(3), .SIZE_LOG2(SIZE_LOG2)) pipeline (
         .clk(clk),
         .rst_n(rst_n),
 
@@ -119,9 +119,9 @@ module match_pe #(parameter TAG_BITS = 8) (
         .o_idx(pipeline_o_idx),
         .o_match_len(pipeline_o_match_len),
 
-        .i_write_addr(i_write_addr),
-        .i_write_data(i_write_data),
-        .i_write_enable(i_write_enable)
+        .i_write_addr(write_addr),
+        .i_write_data(write_data),
+        .i_write_enable(write_enable)
     );
 
     // scoreboard occupied 状态转换
@@ -131,7 +131,7 @@ module match_pe #(parameter TAG_BITS = 8) (
                 scoreboard_occupied_reg[i] <= 1'b0;
             end else begin
                 if(~scoreboard_occupied_reg[i]) begin
-                    if(i_match_req_valid) begin // 有 match 请求来到 match pe，确定该放在哪个条目上
+                    if(match_req_valid) begin // 有 match 请求来到 match pe，确定该放在哪个条目上
                         if(next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
                             // 当前条目未占用，并且是下一个要发射的条目，则放到当前条目
                             scoreboard_occupied_reg[i] <= 1'b1;
@@ -142,7 +142,7 @@ module match_pe #(parameter TAG_BITS = 8) (
                     end
                 end else if (scoreboard_occupied_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry) && scoreboard_done_reg[i]) begin
                     // 当前条目处于占用并且完成的状态，且是第一个完成的条目，则释放当前条目
-                    if(i_match_resp_ready) begin
+                    if(match_resp_ready) begin
                         scoreboard_occupied_reg[i] <= 1'b0;
                     end
                 end
@@ -157,7 +157,7 @@ module match_pe #(parameter TAG_BITS = 8) (
                 scoreboard_wait_reg[i] <= 1'b0;
             end else begin
                 if(~scoreboard_occupied_reg[i]) begin
-                    if(i_match_req_valid) begin
+                    if(match_req_valid) begin
                         // 这里的逻辑和标记 occupied 是一样的
                         // 因为一个请求进入到 scoreboard 之后，在未处理前就处于等待状态
                         if(next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
@@ -196,7 +196,7 @@ module match_pe #(parameter TAG_BITS = 8) (
                         scoreboard_done_reg[i] <= 1'b1;
                     end 
                 end else if(scoreboard_done_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry)) begin // 作为第一个完成的条目
-                    if(i_match_resp_ready) begin // 响应已发出
+                    if(match_resp_ready) begin // 响应已发出
                         scoreboard_done_reg[i] <= 1'b0; // 清除完成标记
                     end
                 end
@@ -208,11 +208,11 @@ module match_pe #(parameter TAG_BITS = 8) (
     always @(posedge clk) begin
         for(i = 0; i < SCOREBOARD_DEPTH; i=i+1) begin
             if(~scoreboard_occupied_reg[i] && first_free_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
-                if(i_match_req_valid) begin
+                if(match_req_valid) begin
                     // 在 PE 收到 match 请求时写入当前条目
-                    scoreboard_head_addr_reg[i] <= i_match_req_head_addr;
-                    scoreboard_history_addr_reg[i] <= i_match_req_history_addr;
-                    scoreboard_tag_reg[i] <= i_match_req_tag;
+                    scoreboard_head_addr_reg[i] <= match_req_head_addr;
+                    scoreboard_history_addr_reg[i] <= match_req_history_addr;
+                    scoreboard_tag_reg[i] <= match_req_tag;
                     scoreboard_match_len_reg[i] <= 0;
                     scoreboard_match_contd_reg[i] <= 1;
                 end
