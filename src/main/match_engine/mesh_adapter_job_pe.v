@@ -39,8 +39,10 @@ module mesh_adapter_job_pe#(parameter JOB_PE_IDX = 0) (
     y 地址为高位，x 地址为低位，shared match pe 的 x 地址最低位为 0
      */
     localparam IN_MESH_MATCH_PE_ADDR_WIDTH = `WINDOW_LOG - `NUM_JOB_PE_LOG2 ;
-    wire [`MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2-1:0] mesh_addr = {match_req_history_addr[IN_MESH_MATCH_PE_ADDR_WIDTH +: `MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2-1], 1'b0};
-    assign {to_mesh_y_dst, to_mesh_x_dst} = mesh_addr;
+    wire [`MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2-1-1:0] mesh_addr = match_req_history_addr[IN_MESH_MATCH_PE_ADDR_WIDTH +: `MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2-1];
+    wire [`MESH_Y_SIZE_LOG2-1-1:0] actual_y;
+    assign {actual_y, to_mesh_x_dst} = mesh_addr;
+    assign to_mesh_y_dst = {actual_y, 1'b1};
     assign to_mesh_payload = {match_req_head_addr, match_req_history_addr, match_req_tag, JOB_PE_IDX[`NUM_JOB_PE_LOG2-1:0]};
 
     assign match_resp_valid = from_mesh_valid;

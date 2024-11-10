@@ -23,28 +23,28 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
     output wire seq_delim,
     input wire seq_ready,
 
-    // shared match pe request port
-    output wire [`NUM_SHARED_MATCH_PE-1:0] shared_match_req_valid,
-    input wire [`NUM_SHARED_MATCH_PE-1:0] shared_match_req_ready,
-    output wire [`NUM_SHARED_MATCH_PE*`ADDR_WIDTH-1:0] shared_match_req_head_addr,
-    output wire [`NUM_SHARED_MATCH_PE*`ADDR_WIDTH-1:0] shared_match_req_history_addr,
-    output wire [`NUM_SHARED_MATCH_PE*`LAZY_LEN_LOG2-1:0] shared_match_req_tag,
-
-    // shared match pe response port
-    input wire shared_match_resp_valid,
-    output wire shared_match_resp_ready,
-    input wire [`NUM_SHARED_MATCH_PE*`LAZY_LEN_LOG2-1:0] shared_match_resp_tag,
-    input wire [`NUM_SHARED_MATCH_PE*`MATCH_LEN_WIDTH-1:0] shared_match_resp_match_len,
-
     // local match pe write port
     input wire [`ADDR_WIDTH-1:0] match_pe_write_addr,
     input wire [`MATCH_PE_WIDTH*8-1:0] match_pe_write_data,
-    input wire match_pe_write_enable
+    input wire match_pe_write_enable,
+
+    // to mesh port
+    output wire [`NUM_SHARED_MATCH_PE-1:0] to_mesh_valid,
+    input wire [`NUM_SHARED_MATCH_PE-1:0] to_mesh_ready,
+    output wire [`NUM_SHARED_MATCH_PE * `MESH_X_SIZE_LOG2-1:0] to_mesh_x_dst,
+    output wire [`NUM_SHARED_MATCH_PE * `MESH_Y_SIZE_LOG2-1:0] to_mesh_y_dst,
+    output wire [`NUM_SHARED_MATCH_PE * `MESH_W-1:0] to_mesh_payload,
+
+    // from mesh port
+    input wire [`NUM_SHARED_MATCH_PE-1:0] from_mesh_valid,
+    output wire [`NUM_SHARED_MATCH_PE-1:0] from_mesh_ready,
+    input wire [`NUM_SHARED_MATCH_PE * `MESH_W-1:0] from_mesh_payload
+
 );
     // add rst_n pipe reg
     reg rst_n_reg;
     always @(posedge clk) begin
-        rst_n_reg = rst_n;
+        rst_n_reg <= rst_n;
     end
 
     wire match_req_group_valid;
@@ -90,6 +90,19 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
         .seq_delim(seq_delim),
         .seq_ready(seq_ready)
     );
+
+     // shared match pe request port
+    wire [`NUM_SHARED_MATCH_PE-1:0] shared_match_req_valid;
+    wire [`NUM_SHARED_MATCH_PE-1:0] shared_match_req_ready;
+    wire [`NUM_SHARED_MATCH_PE*`ADDR_WIDTH-1:0] shared_match_req_head_addr;
+    wire [`NUM_SHARED_MATCH_PE*`ADDR_WIDTH-1:0] shared_match_req_history_addr;
+    wire [`NUM_SHARED_MATCH_PE*`LAZY_LEN_LOG2-1:0] shared_match_req_tag;
+
+    // shared match pe response port
+    wire shared_match_resp_valid;
+    wire shared_match_resp_ready;
+    wire [`NUM_SHARED_MATCH_PE*`LAZY_LEN_LOG2-1:0] shared_match_resp_tag;
+    wire [`NUM_SHARED_MATCH_PE*`MATCH_LEN_WIDTH-1:0] shared_match_resp_match_len;
 
     wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_req_valid;
     wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_req_ready;
@@ -148,7 +161,8 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
 
                 .write_addr(match_pe_write_addr_reg),
                 .write_data(match_pe_write_data_reg),
-                .write_enable(match_pe_write_enable_reg)
+                .write_enable(match_pe_write_enable_reg),
+                .write_history_enable(1'b1)
             );
         end
     endgenerate
@@ -169,6 +183,32 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
         .resp_group_valid(match_resp_group_valid),
         .resp_group_ready(match_resp_group_ready),
         .resp_group_match_len(match_resp_group_match_len)
+    );
+
+    mesh_adapter_job_pe#(.JOB_PE_IDX(JOB_PE_IDX)) majp_inst [`NUM_SHARED_MATCH_PE-1:0] (
+    .clk(clk),
+    .rst_n(rst_n_reg),
+
+    .match_req_valid(shared_match_req_valid),
+    .match_req_ready(shared_match_req_ready),
+    .match_req_head_addr(shared_match_req_head_addr),
+    .match_req_history_addr(shared_match_req_history_addr),
+    .match_req_tag(shared_match_req_tag),
+    
+    .to_mesh_valid(to_mesh_valid),
+    .to_mesh_ready(to_mesh_ready),
+    .to_mesh_x_dst(to_mesh_x_dst),
+    .to_mesh_y_dst(to_mesh_y_dst),
+    .to_mesh_payload(to_mesh_payload),
+
+    .from_mesh_valid(from_mesh_valid),
+    .from_mesh_ready(from_mesh_ready),
+    .from_mesh_payload(from_mesh_payload),
+
+    .match_resp_valid(shared_match_resp_valid),
+    .match_resp_ready(shared_match_resp_ready),
+    .match_resp_tag(shared_match_resp_tag),
+    .match_resp_match_len(shared_match_resp_match_len)
     );
 
 endmodule

@@ -19,7 +19,8 @@ module match_pe #(parameter TAG_BITS = 8, SIZE_LOG2 = 15) (
 
     input wire [`ADDR_WIDTH-1:0] write_addr,
     input wire [`MATCH_PE_WIDTH*8-1:0] write_data,
-    input wire write_enable
+    input wire write_enable,
+    input wire write_history_enable
     
 );
 
@@ -121,7 +122,8 @@ module match_pe #(parameter TAG_BITS = 8, SIZE_LOG2 = 15) (
 
         .i_write_addr(write_addr),
         .i_write_data(write_data),
-        .i_write_enable(write_enable)
+        .i_write_enable(write_enable),
+        .i_write_history_enable(write_history_enable)
     );
 
     // scoreboard occupied 状态转换

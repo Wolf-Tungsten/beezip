@@ -18,7 +18,8 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
 
     input wire [`ADDR_WIDTH-1:0] i_write_addr,
     input wire [`MATCH_PE_WIDTH*8-1:0] i_write_data,
-    input wire i_write_enable
+    input wire i_write_enable,
+    input wire i_write_history_enable
 );
     // 流水线结构
     // in-|window_buffer[reg*(NB+1)]|-|comparator|-[reg]-|match_len_encoder|-[reg]-out
@@ -28,7 +29,7 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
     window_buffer #(.SIZE_BYTES_LOG2(SIZE_LOG2), .NBPIPE(NBPIPE)) history_buffer (
         .clk(clk),
         .rst_n(rst_n),
-        .write_enable(i_write_enable),
+        .write_enable(i_write_enable && i_write_history_enable),
         .write_address(i_write_addr),
         .write_data(i_write_data),
 
@@ -41,7 +42,7 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
     window_buffer #(.SIZE_BYTES_LOG2(`MAX_MATCH_LEN_LOG2 + 1), .NBPIPE(NBPIPE)) head_buffer (
         .clk(clk),
         .rst_n(rst_n),
-        .write_enable(1'b1),
+        .write_enable(i_write_enable),
         .write_address(i_write_addr),
         .write_data(i_write_data),
 
