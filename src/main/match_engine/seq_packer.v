@@ -15,9 +15,9 @@ module seq_packer (
 
     output wire o_valid,
     output wire [`SEQ_PACKET_SIZE-1:0] o_mask,
-    output wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] o_ll,
-    output wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] o_ml,
-    output wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] o_offset,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_LL_BITS-1:0] o_ll,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] o_ml,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_OFFSET_BITS-1:0] o_offset,
     output wire [`SEQ_ML_BITS-1:0] o_overlap,
     output wire o_eoj,
     output wire o_delim,

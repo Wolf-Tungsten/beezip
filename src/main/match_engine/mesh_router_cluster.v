@@ -56,14 +56,9 @@ module mesh_router_cluster #(parameter MESH_X_IDX = 0, MESH_Y_IDX = 0) (
     o_l_ready
 );
 
-    reg rst_n_reg;
-    always @(posedge clk) begin
-        rst_n_reg <= rst_n;
-    end
-
     mesh_router #(.X_SIZE(`MESH_X_SIZE), .Y_SIZE(`MESH_Y_SIZE), .W(`MESH_W)) mesh_router_inst [`NUM_SHARED_MATCH_PE-1:0] (
         .clk(clk),
-        .rst_n(rst_n_reg),
+        .rst_n(rst_n),
         .i_coord_x(MESH_X_IDX[`MESH_X_SIZE_LOG2-1:0]),
         .i_coord_y(MESH_Y_IDX[`MESH_Y_SIZE_LOG2-1:0]),
         .i_n_valid(i_n_valid),
