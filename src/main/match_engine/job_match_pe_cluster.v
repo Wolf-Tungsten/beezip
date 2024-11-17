@@ -15,13 +15,13 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
 
     // output seq packet port
     output wire seq_packet_valid,
-    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_mask,
+    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_strb,
     output wire [`SEQ_PACKET_SIZE*`SEQ_LL_BITS-1:0] seq_packet_ll,
     output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] seq_packet_ml,
     output wire [`SEQ_PACKET_SIZE*`SEQ_OFFSET_BITS-1:0] seq_packet_offset,
-    output wire [`SEQ_ML_BITS-1:0] seq_packet_overlap,
-    output wire seq_packet_eoj,
-    output wire seq_packet_delim,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] seq_packet_overlap,
+    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_eoj,
+    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_delim,
     input wire seq_packet_ready,
 
     // local match pe write port
@@ -230,7 +230,7 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
     .i_ready(seq_ready),
 
     .o_valid(seq_packet_valid),
-    .o_mask(seq_packet_mask),
+    .o_strb(seq_packet_strb),
     .o_ll(seq_packet_ll),
     .o_ml(seq_packet_ml),
     .o_offset(seq_packet_offset),

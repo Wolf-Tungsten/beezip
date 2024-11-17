@@ -13,33 +13,33 @@ module seq_packet_bus_node #(
     input  wire o_token_ready,
 
     input wire i_local_valid,
-    input wire [`SEQ_PACKET_SIZE-1:0] i_local_mask,
+    input wire [`SEQ_PACKET_SIZE-1:0] i_local_strb,
     input wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] i_local_ll,
     input wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] i_local_ml,
     input wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] i_local_offset,
-    input wire [`SEQ_ML_BITS-1:0] i_local_overlap,
-    input wire i_local_eoj,
-    input wire i_local_delim,
+    input wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] i_local_overlap,
+    input wire [`SEQ_PACKET_SIZE-1:0] i_local_eoj,
+    input wire [`SEQ_PACKET_SIZE-1:0] i_local_delim,
     output wire i_local_ready,
 
     input wire i_prev_valid,
-    input wire [`SEQ_PACKET_SIZE-1:0] i_prev_mask,
+    input wire [`SEQ_PACKET_SIZE-1:0] i_prev_strb,
     input wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] i_prev_ll,
     input wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] i_prev_ml,
     input wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] i_prev_offset,
-    input wire [`SEQ_ML_BITS-1:0] i_prev_overlap,
-    input wire i_prev_eoj,
-    input wire i_prev_delim,
+    input wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] i_prev_overlap,
+    input wire [`SEQ_PACKET_SIZE-1:0]i_prev_eoj,
+    input wire [`SEQ_PACKET_SIZE-1:0]i_prev_delim,
     output wire i_prev_ready,
 
     output wire o_next_valid,
-    output wire [`SEQ_PACKET_SIZE-1:0] o_next_mask,
+    output wire [`SEQ_PACKET_SIZE-1:0] o_next_strb,
     output wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] o_next_ll,
     output wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] o_next_ml,
     output wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] o_next_offset,
-    output wire [`SEQ_ML_BITS-1:0] o_next_overlap,
-    output wire o_next_eoj,
-    output wire o_next_delim,
+    output wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] o_next_overlap,
+    output wire [`SEQ_PACKET_SIZE-1:0]o_next_eoj,
+    output wire [`SEQ_PACKET_SIZE-1:0]o_next_delim,
     input wire o_next_ready
 );
 
@@ -57,7 +57,7 @@ module seq_packet_bus_node #(
         // 当前模块持有 token
         if (!eoj_seen_reg) begin
           // 还没收到 eoj
-          if (o_next_valid && o_next_ready && o_next_eoj) begin
+          if (o_next_valid && o_next_ready && |o_next_eoj) begin
             // 收到 eoj，则 seen 置 1
             eoj_seen_reg <= 1'b1;
           end
@@ -85,7 +85,7 @@ module seq_packet_bus_node #(
   assign i_local_ready = sel_local ? o_next_ready : 1'b0;
   assign i_prev_ready   = sel_local ? 1'b0 : o_next_ready;
 
-  assign o_next_mask    = sel_local ? i_local_mask : i_prev_mask;
+  assign o_next_strb    = sel_local ? i_local_strb : i_prev_strb;
   assign o_next_ll      = sel_local ? i_local_ll : i_prev_ll;
   assign o_next_ml      = sel_local ? i_local_ml : i_prev_ml;
   assign o_next_offset  = sel_local ? i_local_offset : i_prev_offset;

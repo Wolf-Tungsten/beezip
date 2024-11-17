@@ -15,13 +15,13 @@ module match_engine (
 
     // output seq port
     output wire seq_packet_valid,
-    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_mask,
+    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_strb,
     output wire [`SEQ_PACKET_SIZE*`SEQ_LL_BITS-1:0] seq_packet_ll,
     output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] seq_packet_ml,
     output wire [`SEQ_PACKET_SIZE*`SEQ_OFFSET_BITS-1:0] seq_packet_offset,
-    output wire [`SEQ_ML_BITS-1:0] seq_packet_overlap,
-    output wire seq_packet_eoj,
-    output wire seq_packet_delim,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] seq_packet_overlap,
+    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_eoj,
+    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_delim,
     input wire seq_packet_ready,
 
     // match pe write port
@@ -304,33 +304,33 @@ module match_engine (
     wire seq_packet_bus_o_token_ready[`NUM_JOB_PE-1:0];
 
     wire seq_packet_bus_i_local_valid[`NUM_JOB_PE-1:0];
-    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_local_mask[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_local_strb[`NUM_JOB_PE-1:0];
     wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_local_ll[`NUM_JOB_PE-1:0];
     wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_local_ml[`NUM_JOB_PE-1:0];
     wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_local_offset[`NUM_JOB_PE-1:0];
-    wire [`SEQ_ML_BITS-1:0] seq_packet_bus_i_local_overlap[`NUM_JOB_PE-1:0];
-    wire seq_packet_bus_i_local_eoj[`NUM_JOB_PE-1:0];
-    wire seq_packet_bus_i_local_delim[`NUM_JOB_PE-1:0];
+    wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_local_overlap[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0]seq_packet_bus_i_local_eoj[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0]seq_packet_bus_i_local_delim[`NUM_JOB_PE-1:0];
     wire seq_packet_bus_i_local_ready[`NUM_JOB_PE-1:0];
 
     wire seq_packet_bus_i_prev_valid[`NUM_JOB_PE-1:0];
-    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_prev_mask[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_prev_strb[`NUM_JOB_PE-1:0];
     wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_prev_ll[`NUM_JOB_PE-1:0];
     wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_prev_ml[`NUM_JOB_PE-1:0];
     wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_prev_offset[`NUM_JOB_PE-1:0];
-    wire [`SEQ_ML_BITS-1:0] seq_packet_bus_i_prev_overlap[`NUM_JOB_PE-1:0];
-    wire seq_packet_bus_i_prev_eoj[`NUM_JOB_PE-1:0];
-    wire seq_packet_bus_i_prev_delim[`NUM_JOB_PE-1:0];
+    wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_i_prev_overlap[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0]seq_packet_bus_i_prev_eoj[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0]seq_packet_bus_i_prev_delim[`NUM_JOB_PE-1:0];
     wire seq_packet_bus_i_prev_ready[`NUM_JOB_PE-1:0];
 
     wire seq_packet_bus_o_next_valid[`NUM_JOB_PE-1:0];
-    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_mask[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_strb[`NUM_JOB_PE-1:0];
     wire [`SEQ_LL_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_ll[`NUM_JOB_PE-1:0];
     wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_ml[`NUM_JOB_PE-1:0];
     wire [`SEQ_OFFSET_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_offset[`NUM_JOB_PE-1:0];
-    wire [`SEQ_ML_BITS-1:0] seq_packet_bus_o_next_overlap[`NUM_JOB_PE-1:0];
-    wire seq_packet_bus_o_next_eoj[`NUM_JOB_PE-1:0];
-    wire seq_packet_bus_o_next_delim[`NUM_JOB_PE-1:0];
+    wire [`SEQ_ML_BITS*`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_overlap[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_eoj[`NUM_JOB_PE-1:0];
+    wire [`SEQ_PACKET_SIZE-1:0] seq_packet_bus_o_next_delim[`NUM_JOB_PE-1:0];
     wire seq_packet_bus_o_next_ready[`NUM_JOB_PE-1:0];
 
     genvar spbn_idx; // seq packet bus node
@@ -344,7 +344,7 @@ module match_engine (
                 .o_token_valid(seq_packet_bus_o_token_valid[spbn_idx]),
                 .o_token_ready(seq_packet_bus_o_token_ready[spbn_idx]),
                 .i_local_valid(seq_packet_bus_i_local_valid[spbn_idx]),
-                .i_local_mask(seq_packet_bus_i_local_mask[spbn_idx]),
+                .i_local_strb(seq_packet_bus_i_local_strb[spbn_idx]),
                 .i_local_ll(seq_packet_bus_i_local_ll[spbn_idx]),
                 .i_local_ml(seq_packet_bus_i_local_ml[spbn_idx]),
                 .i_local_offset(seq_packet_bus_i_local_offset[spbn_idx]),
@@ -353,7 +353,7 @@ module match_engine (
                 .i_local_delim(seq_packet_bus_i_local_delim[spbn_idx]),
                 .i_local_ready(seq_packet_bus_i_local_ready[spbn_idx]),
                 .i_prev_valid(seq_packet_bus_i_prev_valid[spbn_idx]),
-                .i_prev_mask(seq_packet_bus_i_prev_mask[spbn_idx]),
+                .i_prev_strb(seq_packet_bus_i_prev_strb[spbn_idx]),
                 .i_prev_ll(seq_packet_bus_i_prev_ll[spbn_idx]),
                 .i_prev_ml(seq_packet_bus_i_prev_ml[spbn_idx]),
                 .i_prev_offset(seq_packet_bus_i_prev_offset[spbn_idx]),
@@ -362,7 +362,7 @@ module match_engine (
                 .i_prev_delim(seq_packet_bus_i_prev_delim[spbn_idx]),
                 .i_prev_ready(seq_packet_bus_i_prev_ready[spbn_idx]),
                 .o_next_valid(seq_packet_bus_o_next_valid[spbn_idx]),
-                .o_next_mask(seq_packet_bus_o_next_mask[spbn_idx]),
+                .o_next_strb(seq_packet_bus_o_next_strb[spbn_idx]),
                 .o_next_ll(seq_packet_bus_o_next_ll[spbn_idx]),
                 .o_next_ml(seq_packet_bus_o_next_ml[spbn_idx]),
                 .o_next_offset(seq_packet_bus_o_next_offset[spbn_idx]),
@@ -383,7 +383,7 @@ module match_engine (
             
             if (spbn_idx > 0) begin
                 assign seq_packet_bus_i_prev_valid[spbn_idx] = seq_packet_bus_o_next_valid[spbn_idx-1];
-                assign seq_packet_bus_i_prev_mask[spbn_idx] = seq_packet_bus_o_next_mask[spbn_idx-1];
+                assign seq_packet_bus_i_prev_strb[spbn_idx] = seq_packet_bus_o_next_strb[spbn_idx-1];
                 assign seq_packet_bus_i_prev_ll[spbn_idx] = seq_packet_bus_o_next_ll[spbn_idx-1];
                 assign seq_packet_bus_i_prev_ml[spbn_idx] = seq_packet_bus_o_next_ml[spbn_idx-1];
                 assign seq_packet_bus_i_prev_offset[spbn_idx] = seq_packet_bus_o_next_offset[spbn_idx-1];
@@ -395,15 +395,15 @@ module match_engine (
         end
     endgenerate
     assign seq_packet_bus_i_prev_valid[0] = 1'b0;
-    assign seq_packet_bus_i_prev_mask[0] = '0;
+    assign seq_packet_bus_i_prev_strb[0] = '0;
     assign seq_packet_bus_i_prev_ll[0] = '0;
     assign seq_packet_bus_i_prev_ml[0] = '0;
     assign seq_packet_bus_i_prev_offset[0] = '0;
     assign seq_packet_bus_i_prev_overlap[0] = '0;
-    assign seq_packet_bus_i_prev_eoj[0] = 1'b0;
-    assign seq_packet_bus_i_prev_delim[0] = 1'b0;
+    assign seq_packet_bus_i_prev_eoj[0] = '0;
+    assign seq_packet_bus_i_prev_delim[0] = '0;
     assign seq_packet_valid = seq_packet_bus_o_next_valid[`NUM_JOB_PE-1];
-    assign seq_packet_mask = seq_packet_bus_o_next_mask[`NUM_JOB_PE-1];
+    assign seq_packet_strb = seq_packet_bus_o_next_strb[`NUM_JOB_PE-1];
     assign seq_packet_ll = seq_packet_bus_o_next_ll[`NUM_JOB_PE-1];
     assign seq_packet_ml = seq_packet_bus_o_next_ml[`NUM_JOB_PE-1];
     assign seq_packet_offset = seq_packet_bus_o_next_offset[`NUM_JOB_PE-1];
@@ -472,7 +472,7 @@ module match_engine (
 
                         // output seq packet port
                         .seq_packet_valid(seq_packet_bus_i_local_valid[job_match_pe_idx]),
-                        .seq_packet_mask(seq_packet_bus_i_local_mask[job_match_pe_idx]),
+                        .seq_packet_strb(seq_packet_bus_i_local_strb[job_match_pe_idx]),
                         .seq_packet_ll(seq_packet_bus_i_local_ll[job_match_pe_idx]),
                         .seq_packet_ml(seq_packet_bus_i_local_ml[job_match_pe_idx]),
                         .seq_packet_offset(seq_packet_bus_i_local_offset[job_match_pe_idx]),
