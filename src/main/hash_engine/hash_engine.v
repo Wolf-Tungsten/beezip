@@ -1,25 +1,25 @@
 `include "parameters.vh"
 `default_nettype none
-module hash_engine_top(
+module hash_engine(
     input wire clk,
     input wire rst_n,
 
     input wire [`HASH_ISSUE_WIDTH_LOG2+1-1:0] cfg_max_queued_req_num, 
 
-    input  wire input_valid,
-    output wire input_ready,
-    input  wire input_delim,
-    input  wire [`HASH_ISSUE_WIDTH*8-1:0] input_data,
+    input  wire i_valid,
+    output wire i_ready,
+    input  wire i_delim,
+    input  wire [`HASH_ISSUE_WIDTH*8-1:0] i_data,
 
-    output wire output_valid,
-    output wire [`ADDR_WIDTH-1:0] output_head_addr,
-    output wire [`HASH_ISSUE_WIDTH-1:0] output_history_valid,
-    output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] output_history_addr,
-    output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] output_meta_match_len,
-    output wire [`HASH_ISSUE_WIDTH-1:0] output_meta_match_can_ext,
-    output wire [`HASH_ISSUE_WIDTH*8-1:0] output_data,
-    output wire output_delim,
-    input wire output_ready
+    output wire o_valid,
+    output wire [`ADDR_WIDTH-1:0] o_head_addr,
+    output wire [`HASH_ISSUE_WIDTH-1:0] o_history_valid,
+    output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] o_history_addr,
+    output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] o_meta_match_len,
+    output wire [`HASH_ISSUE_WIDTH-1:0] o_meta_match_can_ext,
+    output wire [`HASH_ISSUE_WIDTH*8-1:0] o_data,
+    output wire o_delim,
+    input wire o_ready
 );
     /*
            [module name]      :   [short name]
@@ -71,10 +71,10 @@ module hash_engine_top(
         .clk(clk),
         .rst_n(rst_n),
 
-        .input_valid(input_valid),
-        .input_ready(input_ready),
-        .input_delim(input_delim),
-        .input_data (input_data),
+        .input_valid(i_valid),
+        .input_ready(i_ready),
+        .input_delim(i_delim),
+        .input_data (i_data),
 
         .output_valid(valid_between_buffer_compute),
         .output_ready(ready_between_buffer_compute),
@@ -164,15 +164,15 @@ module hash_engine_top(
         .input_delim_vec(delim_between_pe_array_post_schd),
         .input_ready(ready_between_pe_array_post_schd),
         
-        .output_valid(output_valid),
-        .output_head_addr(output_head_addr),
-        .output_history_valid(output_history_valid),
-        .output_history_addr(output_history_addr),
-        .output_meta_match_len(output_meta_match_len),
-        .output_meta_match_can_ext(output_meta_match_can_ext),
-        .output_data(output_data),
-        .output_delim(output_delim),
-        .output_ready(output_ready)
+        .output_valid(o_valid),
+        .output_head_addr(o_head_addr),
+        .output_history_valid(o_history_valid),
+        .output_history_addr(o_history_addr),
+        .output_meta_match_len(o_meta_match_len),
+        .output_meta_match_can_ext(o_meta_match_can_ext),
+        .output_data(o_data),
+        .output_delim(o_delim),
+        .output_ready(o_ready)
     );
 
     `ifdef HASH_RESULT_LOG

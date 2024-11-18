@@ -4,30 +4,30 @@ module match_engine (
     input wire clk,
     input wire rst_n,
 
-    input wire hash_batch_valid,
-    input wire [`ADDR_WIDTH-1:0] hash_batch_head_addr,
-    input wire [`HASH_ISSUE_WIDTH-1:0] hash_batch_history_valid,
-    input wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] hash_batch_history_addr,
-    input wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] hash_batch_meta_match_len,
-    input wire [`HASH_ISSUE_WIDTH-1:0] hash_batch_meta_match_can_ext,
-    input wire hash_batch_delim,
-    output wire hash_batch_ready,
+    input wire i_hash_batch_valid,
+    input wire [`ADDR_WIDTH-1:0] i_hash_batch_head_addr,
+    input wire [`HASH_ISSUE_WIDTH-1:0] i_hash_batch_history_valid,
+    input wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] i_hash_batch_history_addr,
+    input wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] i_hash_batch_meta_match_len,
+    input wire [`HASH_ISSUE_WIDTH-1:0] i_hash_batch_meta_match_can_ext,
+    input wire i_hash_batch_delim,
+    output wire i_hash_batch_ready,
 
     // output seq port
-    output wire seq_packet_valid,
-    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_strb,
-    output wire [`SEQ_PACKET_SIZE*`SEQ_LL_BITS-1:0] seq_packet_ll,
-    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] seq_packet_ml,
-    output wire [`SEQ_PACKET_SIZE*`SEQ_OFFSET_BITS-1:0] seq_packet_offset,
-    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] seq_packet_overlap,
-    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_eoj,
-    output wire [`SEQ_PACKET_SIZE-1:0] seq_packet_delim,
-    input wire seq_packet_ready,
+    output wire o_seq_packet_valid,
+    output wire [`SEQ_PACKET_SIZE-1:0] o_seq_packet_strb,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_LL_BITS-1:0] o_seq_packet_ll,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] o_seq_packet_ml,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_OFFSET_BITS-1:0] o_seq_packet_offset,
+    output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] o_seq_packet_overlap,
+    output wire [`SEQ_PACKET_SIZE-1:0] o_seq_packet_eoj,
+    output wire [`SEQ_PACKET_SIZE-1:0] o_seq_packet_delim,
+    input wire o_seq_packet_ready,
 
     // match pe write port
-    input wire [`ADDR_WIDTH-1:0] match_pe_write_addr,
-    input wire [`MATCH_PE_WIDTH*8-1:0] match_pe_write_data,
-    input wire match_pe_write_enable
+    input wire [`ADDR_WIDTH-1:0] i_match_pe_write_addr,
+    input wire [`MATCH_PE_WIDTH*8-1:0] i_match_pe_write_data,
+    input wire i_match_pe_write_enable
 );
 
     reg rst_n_p0_reg;
@@ -287,14 +287,14 @@ module match_engine (
     endgenerate
     assign hash_batch_bus_o_next_ready[`NUM_JOB_PE-1] = 1'b0; // 结尾的 ready tie off
     // 第一个节点的输入来自外部
-    assign hash_batch_bus_i_valid[0] = hash_batch_valid;
-    assign hash_batch_bus_i_head_addr[0] = hash_batch_head_addr;
-    assign hash_batch_bus_i_history_valid[0] = hash_batch_history_valid;
-    assign hash_batch_bus_i_history_addr[0] = hash_batch_history_addr;
-    assign hash_batch_bus_i_meta_match_len[0] = hash_batch_meta_match_len;
-    assign hash_batch_bus_i_meta_match_can_ext[0] = hash_batch_meta_match_can_ext;
-    assign hash_batch_bus_i_delim[0] = hash_batch_delim;
-    assign hash_batch_ready = hash_batch_bus_i_ready[0];
+    assign hash_batch_bus_i_valid[0] = i_hash_batch_valid;
+    assign hash_batch_bus_i_head_addr[0] = i_hash_batch_head_addr;
+    assign hash_batch_bus_i_history_valid[0] = i_hash_batch_history_valid;
+    assign hash_batch_bus_i_history_addr[0] = i_hash_batch_history_addr;
+    assign hash_batch_bus_i_meta_match_len[0] = i_hash_batch_meta_match_len;
+    assign hash_batch_bus_i_meta_match_can_ext[0] = i_hash_batch_meta_match_can_ext;
+    assign hash_batch_bus_i_delim[0] = i_hash_batch_delim;
+    assign i_hash_batch_ready = hash_batch_bus_i_ready[0];
 
     // 创建 seq packet bus
     wire seq_packet_bus_i_token_valid[`NUM_JOB_PE-1:0];
@@ -402,15 +402,15 @@ module match_engine (
     assign seq_packet_bus_i_prev_overlap[0] = '0;
     assign seq_packet_bus_i_prev_eoj[0] = '0;
     assign seq_packet_bus_i_prev_delim[0] = '0;
-    assign seq_packet_valid = seq_packet_bus_o_next_valid[`NUM_JOB_PE-1];
-    assign seq_packet_strb = seq_packet_bus_o_next_strb[`NUM_JOB_PE-1];
-    assign seq_packet_ll = seq_packet_bus_o_next_ll[`NUM_JOB_PE-1];
-    assign seq_packet_ml = seq_packet_bus_o_next_ml[`NUM_JOB_PE-1];
-    assign seq_packet_offset = seq_packet_bus_o_next_offset[`NUM_JOB_PE-1];
-    assign seq_packet_overlap = seq_packet_bus_o_next_overlap[`NUM_JOB_PE-1];
-    assign seq_packet_eoj = seq_packet_bus_o_next_eoj[`NUM_JOB_PE-1];
-    assign seq_packet_delim = seq_packet_bus_o_next_delim[`NUM_JOB_PE-1];
-    assign seq_packet_bus_o_next_ready[`NUM_JOB_PE-1] = seq_packet_ready;
+    assign o_seq_packet_valid = seq_packet_bus_o_next_valid[`NUM_JOB_PE-1];
+    assign o_seq_packet_strb = seq_packet_bus_o_next_strb[`NUM_JOB_PE-1];
+    assign o_seq_packet_ll = seq_packet_bus_o_next_ll[`NUM_JOB_PE-1];
+    assign o_seq_packet_ml = seq_packet_bus_o_next_ml[`NUM_JOB_PE-1];
+    assign o_seq_packet_offset = seq_packet_bus_o_next_offset[`NUM_JOB_PE-1];
+    assign o_seq_packet_overlap = seq_packet_bus_o_next_overlap[`NUM_JOB_PE-1];
+    assign o_seq_packet_eoj = seq_packet_bus_o_next_eoj[`NUM_JOB_PE-1];
+    assign o_seq_packet_delim = seq_packet_bus_o_next_delim[`NUM_JOB_PE-1];
+    assign seq_packet_bus_o_next_ready[`NUM_JOB_PE-1] = o_seq_packet_ready;
 
     generate
         for(mesh_x_idx = 0; mesh_x_idx < `MESH_X_SIZE; mesh_x_idx = mesh_x_idx + 1) begin: job_match_pe_gen_x
@@ -421,9 +421,9 @@ module match_engine (
                 if(rst_n == 1'b0) begin
                     match_pe_write_enable_reg <= 1'b0;
                 end else begin
-                    match_pe_write_addr_reg <= match_pe_write_addr;
-                    match_pe_write_data_reg <= match_pe_write_data;
-                    match_pe_write_enable_reg <= match_pe_write_enable;
+                    match_pe_write_addr_reg <= i_match_pe_write_addr;
+                    match_pe_write_data_reg <= i_match_pe_write_data;
+                    match_pe_write_enable_reg <= i_match_pe_write_enable;
                 end
             end
             reg col_smpc_jmpc_rst_n_p1_reg;

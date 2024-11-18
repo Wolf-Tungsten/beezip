@@ -257,5 +257,13 @@ module seq_serializer (
         end
     end
 
+    assign i_ready = (state_reg[S_PASS] & ~i_eoj & o_ready) | (state_reg[S_PASS] & i_eoj) | state_reg[S_WELD];
+
+    assign o_valid = (state_reg[S_PASS] & ~i_eoj & i_valid) | state_reg[S_FLUSH] | state_reg[S_FLUSH_CONT] | state_reg[S_FLUSH_ONE_THEN_WELD];
+    assign o_ll = (state_reg[S_PASS] & ~i_eoj) ? i_ll : this_seq_ll_reg;
+    assign o_ml = (state_reg[S_PASS] & ~i_eoj) ? i_ml : this_seq_ml_reg[`SEQ_ML_BITS-1:0];
+    assign o_offset = (state_reg[S_PASS] & ~i_eoj) ? i_offset : this_seq_offset_reg;
+    assign o_delim = (state_reg[S_PASS] & ~i_eoj) ? i_delim : this_seq_delim_reg;
+
 
 endmodule
