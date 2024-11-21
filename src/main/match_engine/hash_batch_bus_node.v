@@ -1,6 +1,6 @@
 `include "parameters.vh"
 
-module hash_batch_bus_node #(parameter [`NUM_JOB_PE_LOG2-1:0] IDX = '0, parameter PIPED=0) (
+module hash_batch_bus_node #(parameter [`NUM_JOB_PE_LOG2-1:0] IDX = '0, parameter [0:0] PIPED=0) (
     input wire clk,
     input wire rst_n,
 
@@ -63,11 +63,11 @@ module hash_batch_bus_node #(parameter [`NUM_JOB_PE_LOG2-1:0] IDX = '0, paramete
     assign next_delim = i_delim;
 
     generate
-        if(PIPED > 0) begin
+        if(PIPED) begin
             // create a handshake between this and next
             handshake_slice_reg #(
                 .W(`ADDR_WIDTH + `HASH_ISSUE_WIDTH + `HASH_ISSUE_WIDTH*`ADDR_WIDTH + `HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH + `HASH_ISSUE_WIDTH + 1),
-                .DEPTH(PIPED)
+                .DEPTH(2)
             ) pipeline_reg (
                 .clk(clk),
                 .rst_n(rst_n),

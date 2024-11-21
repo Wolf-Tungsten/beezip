@@ -150,7 +150,10 @@ module job_match_pe_cluster #(parameter JOB_PE_IDX = 0) (
     genvar i;
     generate
         for(i = 0; i < `NUM_LOCAL_MATCH_PE; i = i + 1) begin
-            match_pe #(.TAG_BITS(`LAZY_LEN_LOG2), .SIZE_LOG2(`MATCH_PE_SIZE_LOG2(i))) local_match_pe_inst (
+            localparam size_log2 = (i == 0) ? `MATCH_PE_0_SIZE_LOG2 :
+                                   (i == 1) ? `MATCH_PE_1_SIZE_LOG2 :
+                                   (i == 2) ? `MATCH_PE_2_SIZE_LOG2 : 0;
+            match_pe #(.TAG_BITS(`LAZY_LEN_LOG2), .SIZE_LOG2(size_log2)) local_match_pe_inst (
                 .clk(clk),
                 .rst_n(rst_n),
                 .match_req_valid(local_match_req_valid[i]),

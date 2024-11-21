@@ -244,9 +244,10 @@ module match_engine (
     genvar hbbn_idx; // hash batch bus node
     generate
         for (hbbn_idx = 0; hbbn_idx < `NUM_JOB_PE; hbbn_idx = hbbn_idx + 1) begin: hbbn_node_gen
-            hash_batch_bus_node #(.IDX(hbbn_idx), .PIPED(1)) hbbn_inst (
+            localparam h_idx = hbbn_idx;
+            hash_batch_bus_node #(.IDX(h_idx), .PIPED(1)) hbbn_inst (
                 .clk(clk),
-                .rst_n(hbbn_spbn_rst_n_p1_reg[hbbn_idx/4]),
+                .rst_n(hbbn_spbn_rst_n_p1_reg[hbbn_idx >> 2]),
                 .i_valid(hash_batch_bus_i_valid[hbbn_idx]),
                 .i_head_addr(hash_batch_bus_i_head_addr[hbbn_idx]),
                 .i_history_valid(hash_batch_bus_i_history_valid[hbbn_idx]),
@@ -338,7 +339,7 @@ module match_engine (
         for (spbn_idx = 0; spbn_idx < `NUM_JOB_PE; spbn_idx = spbn_idx + 1) begin: spbn_node_gen
             seq_packet_bus_node #(.FIRST(spbn_idx == 0)) spbn_inst (
                 .clk(clk),
-                .rst_n(hbbn_spbn_rst_n_p1_reg[hbbn_idx/4]),
+                .rst_n(hbbn_spbn_rst_n_p1_reg[spbn_idx >> 2]),
                 .i_token_valid(seq_packet_bus_i_token_valid[spbn_idx]),
                 .i_token_ready(seq_packet_bus_i_token_ready[spbn_idx]),
                 .o_token_valid(seq_packet_bus_o_token_valid[spbn_idx]),

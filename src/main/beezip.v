@@ -21,7 +21,17 @@ module beezip (
     output wire [`SEQ_PACKET_SIZE*`SEQ_ML_BITS-1:0] o_seq_packet_overlap,
     output wire [`SEQ_PACKET_SIZE-1:0] o_seq_packet_eoj,
     output wire [`SEQ_PACKET_SIZE-1:0] o_seq_packet_delim,
-    input wire o_seq_packet_ready
+    input wire o_seq_packet_ready,
+
+    output wire dbg_hash_engine_o_valid,
+    output wire [`ADDR_WIDTH-1:0] dbg_hash_engine_o_head_addr,
+    output wire [`HASH_ISSUE_WIDTH-1:0] dbg_hash_engine_o_history_valid,
+    output wire [`HASH_ISSUE_WIDTH*`ADDR_WIDTH-1:0] dbg_hash_engine_o_history_addr,
+    output wire [`HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH-1:0] dbg_hash_engine_o_meta_match_len,
+    output wire [`HASH_ISSUE_WIDTH-1:0] dbg_hash_engine_o_meta_match_can_ext,
+    output wire [`HASH_ISSUE_WIDTH*8-1:0] dbg_hash_engine_o_data,
+    output wire dbg_hash_engine_o_delim,
+    output wire dbg_hash_engine_o_ready
 );
     wire data_fifo_input_valid;
     wire [`HASH_ISSUE_WIDTH*8-1:0] data_fifo_input_data;
@@ -102,5 +112,15 @@ module beezip (
         .o_seq_packet_delim(o_seq_packet_delim),
         .o_seq_packet_ready(o_seq_packet_ready)
     );
+
+    assign dbg_hash_engine_o_valid = hash_engine_o_valid;
+    assign dbg_hash_engine_o_head_addr = hash_engine_o_head_addr;
+    assign dbg_hash_engine_o_history_valid = hash_engine_o_history_valid;
+    assign dbg_hash_engine_o_history_addr = hash_engine_o_history_addr;
+    assign dbg_hash_engine_o_meta_match_len = hash_engine_o_meta_match_len;
+    assign dbg_hash_engine_o_meta_match_can_ext = hash_engine_o_meta_match_can_ext;
+    assign dbg_hash_engine_o_data = hash_engine_o_data;
+    assign dbg_hash_engine_o_delim = hash_engine_o_delim;
+    assign dbg_hash_engine_o_ready = hash_engine_o_ready;
 
 endmodule

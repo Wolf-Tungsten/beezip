@@ -1,4 +1,5 @@
 `include "parameters.vh"
+`include "util.vh"
 
 module hash_pe_request_serializer(
         input wire clk,
@@ -26,7 +27,9 @@ module hash_pe_request_serializer(
     dff #(.W(1), .RST(0), .EN(0)) rst_n_reg(
         .clk(clk),
         .d(rst_n),
-        .q(p_rst_n)
+        .q(p_rst_n),
+        .rst_n(1'b0),
+        .en(1'b0)
     );
     reg [`HASH_BITS-`NUM_HASH_PE_LOG2-1:0] input_hash_value_arr [0:`HASH_ISSUE_WIDTH-1];
     reg [`HASH_ISSUE_WIDTH-1:0] buffer_mask_vec_reg_d;
@@ -141,7 +144,7 @@ module hash_pe_request_serializer(
                 if(input_valid && input_valid_count > 0) begin
                     output_valid = 1'b1;
                     output_hash_value = input_hash_value_arr[input_valid_sel];
-                    output_addr = input_head_addr + input_valid_sel;
+                    output_addr = input_head_addr + `ZERO_EXTEND(input_valid_sel, `ADDR_WIDTH);
                     output_delim = input_delim;
                     if(output_ready) begin
                         // 输出不阻塞
@@ -157,7 +160,7 @@ module hash_pe_request_serializer(
                             counter_reg_en = 1'b1;
                             for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
                                 buffer_hash_value_arr_reg_d[i * (`HASH_BITS-`NUM_HASH_PE_LOG2) +: `HASH_BITS-`NUM_HASH_PE_LOG2] = input_hash_value_arr[i];
-                                buffer_mask_vec_reg_d[i] = input_mask_vec[i] && (i != input_valid_sel); // 不写入第一个
+                                buffer_mask_vec_reg_d[i] = input_mask_vec[i] && (i[`HASH_ISSUE_WIDTH_LOG2-1:0] != input_valid_sel); // 不写入第一个
                             end
                             next_state[FLUSH] = 1'b1;
                         end
@@ -188,7 +191,7 @@ module hash_pe_request_serializer(
             end
             state_reg[FLUSH]: begin
                 output_valid = 1'b1;
-                output_addr = buffer_head_addr_reg_q + buffer_valid_sel;
+                output_addr = buffer_head_addr_reg_q + `ZERO_EXTEND(buffer_valid_sel, `ADDR_WIDTH);
                 output_hash_value = buffer_hash_value_arr_reg_q[buffer_valid_sel * (`HASH_BITS-`NUM_HASH_PE_LOG2) +: `HASH_BITS-`NUM_HASH_PE_LOG2];
                 output_delim = buffer_delim_reg_q;
                 if(output_ready) begin
@@ -200,7 +203,7 @@ module hash_pe_request_serializer(
                         // 更新 mask vec reg
                         buffer_mask_vec_reg_en = 1'b1;
                         for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
-                            buffer_mask_vec_reg_d[i] = buffer_mask_vec_reg_q[i] && (i != buffer_valid_sel);
+                            buffer_mask_vec_reg_d[i] = buffer_mask_vec_reg_q[i] && (i[`HASH_ISSUE_WIDTH_LOG2-1:0] != buffer_valid_sel);
                         end
                     end
                     else begin

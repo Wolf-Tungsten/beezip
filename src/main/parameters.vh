@@ -39,10 +39,7 @@
 
 // new parameter
 
-`define MATCH_PE_SIZE_LOG2($i) \
-    "MATCH_PE_``$i``_SIZE_LOG2"
-`define MATCH_PE_SIZE($i) \
-    (2**`MATCH_PE_SIZE_LOG2($i))
+
 `define MATCH_PE_0_SIZE_LOG2 12
 `define MATCH_PE_1_SIZE_LOG2 15
 `define MATCH_PE_2_SIZE_LOG2 16

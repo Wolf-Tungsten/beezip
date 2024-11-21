@@ -1,5 +1,5 @@
 `include "util.vh"
-module fifo #(parameter DEPTH = 4, W = 8) (
+module fifo #(parameter [31:0] DEPTH = 4, W = 8) (
     input wire clk,
     input wire rst_n,
     input wire input_valid,
@@ -17,7 +17,7 @@ reg [W-1:0] buffer_reg [DEPTH-1:0];
 reg [ADDR_WIDTH-1:0] head_ptr_reg, tail_ptr_reg;
 reg [COUNT_WIDTH-1:0] count_reg;
 
-assign input_ready = count_reg <= (DEPTH - 1);
+assign input_ready = count_reg <= {(DEPTH - 1)}[COUNT_WIDTH-1:0];
 assign output_valid = count_reg > 0;
 assign output_payload = buffer_reg[head_ptr_reg];
 

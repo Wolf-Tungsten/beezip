@@ -94,4 +94,14 @@ build_job_pe_tb:
 
 run_job_pe_tb: 
 	cd ${BEEZIP_SIM_DIR}/job_pe_tb && ./Vjob_pe
-	
+
+BEEZIP_TB_DIR := ${BEEZIP_SRC_DIR}/test/beezip_tb
+BEEZIP_TB_CSRC := $(wildcard ${BEEZIP_TB_DIR}/*.cpp)
+BEEZIP_TB_INC := ${BEEZIP_TB_DIR}
+build_beezip_tb:
+	mkdir -p ${BEEZIP_SIM_DIR}/beezip_tb
+	verilator --cc --exe --build -j 8 --trace \
+	-f ${BEEZIP_TB_DIR}/beezip_tb.f -I${INC_DIR_PATH} \
+	${BEEZIP_TB_CSRC} -CFLAGS "-I${BEEZIP_TB_INC}" \
+	--top-module beezip \
+	-Mdir ${BEEZIP_SIM_DIR}/beezip_tb

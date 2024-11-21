@@ -29,7 +29,9 @@ module hash_pe_array(
     dff #(.W(1), .RST(0), .EN(0)) rst_n_reg(
         .clk(clk),
         .d(rst_n),
-        .q(p_rst_n)
+        .q(p_rst_n),
+        .rst_n(1'b0),
+        .en(1'b0)
     );
 
     localparam BANK_NUM = `NUM_HASH_PE * `ROW_SIZE;
@@ -78,6 +80,7 @@ module hash_pe_array(
     wire [BANK_NUM-1:0] bank_write_enable;
     wire [BANK_NUM*BANK_ADDR_SIZE-1:0] bank_write_address;
     wire [BANK_NUM*BANK_WORD_SIZE-1:0] bank_write_data;
+    /* verilator lint_off WIDTHCONCAT */
     sram2p #(.AWIDTH(BANK_ADDR_SIZE), .DWIDTH(BANK_WORD_SIZE), .NBPIPE(`HASH_PE_SRAM_NBPIPE)) sram_bank [BANK_NUM-1:0] (
                   .clk(clk),
                   .rst_n(p_rst_n),
@@ -88,8 +91,9 @@ module hash_pe_array(
 
                   .write_enable(bank_write_enable | {BANK_NUM{!init_flag_reg_q}}),
                   .write_address(init_flag_reg_q ? bank_write_address : {BANK_NUM{init_addr_reg_q}}),
-                  .write_data(init_flag_reg_q ? bank_write_data : {BANK_NUM*BANK_WORD_SIZE{1'b0}})
+                  .write_data(init_flag_reg_q ? bank_write_data : {(BANK_NUM*BANK_WORD_SIZE){1'b0}})
               );
+    /* verilator lint_on WIDTHCONCAT */
 
     
 
@@ -309,7 +313,7 @@ module hash_pe_array(
     always @(*) begin: bank_write_data_logic
         integer row, col;
         for(row = 0; row < `NUM_HASH_PE; row = row + 1) begin
-            bank_write_meta_history[row] = (write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0});
+            bank_write_meta_history[row] = {write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0}}[`META_HISTORY_LEN*8-1:0];
             for(col = 0; col < `ROW_SIZE; col = col + 1) begin
                 if(!init_flag_reg_q) begin
                     write_req_data_reg_d[(row * `ROW_SIZE + col) * BANK_WORD_SIZE +: BANK_WORD_SIZE] = 0;
@@ -360,10 +364,10 @@ module hash_pe_array(
         meta_shift_buffer_valid = write_stage_valid_reg_q;
         meta_shift_buffer_mask = write_stage_mask_reg_q;
         meta_shift_buffer_addr_vec = write_stage_addr_vec_reg_q;
-        meta_shift_buffer_data = write_stage_data_reg_q;
+        meta_shift_buffer_data = write_stage_data_reg_q[`HASH_ISSUE_WIDTH*8-1:0];
         meta_shift_buffer_delim_vec = write_stage_delim_vec_reg_q;
         for(row = 0; row < `NUM_HASH_PE; row = row + 1) begin
-            meta_shift_buffer_shift_data[row*`META_HISTORY_LEN*8 +: `META_HISTORY_LEN*8] = write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0};
+            meta_shift_buffer_shift_data[row*`META_HISTORY_LEN*8 +: `META_HISTORY_LEN*8] = {write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0}}[`META_HISTORY_LEN*8-1:0];
             for(col = 0; col < `ROW_SIZE; col = col + 1) begin
                 {bank_readout_history_valid_vec[row*`ROW_SIZE + col],
                  bank_readout_meta_history_vec[(row*`ROW_SIZE + col)*(`META_HISTORY_LEN*8) +: (`META_HISTORY_LEN*8)],
@@ -386,7 +390,7 @@ module hash_pe_array(
     end
 
     handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`META_HISTORY_LEN*8+`ROW_SIZE*(1+`ADDR_WIDTH+`META_HISTORY_LEN*8)+1) + (`HASH_ISSUE_WIDTH*8)),
-    .DEPTH(1)) meta_shift_buffer (
+    .DEPTH(2)) meta_shift_buffer (
                     .clk(clk),
                     .rst_n(p_rst_n),
 
@@ -453,7 +457,7 @@ module hash_pe_array(
     wire [`HASH_ISSUE_WIDTH*8-1:0] meta_mask_buffer_output_data;
 
     handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`ROW_SIZE*(1+`ADDR_WIDTH+`META_HISTORY_LEN)+1) + (`HASH_ISSUE_WIDTH*8)),
-    .DEPTH(1)) meta_mask_buffer (
+    .DEPTH(2)) meta_mask_buffer (
                     .clk(clk),
                     .rst_n(p_rst_n),
 

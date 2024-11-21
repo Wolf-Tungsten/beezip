@@ -6,6 +6,7 @@
     "C_Cpp.default.cStandard": "c17",
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/sim/job_pe_tb",
+        "${workspaceFolder}/sim/beezip_tb",
         "/home/gaoruihao/verilator/include"
     ],
     "files.associations": {

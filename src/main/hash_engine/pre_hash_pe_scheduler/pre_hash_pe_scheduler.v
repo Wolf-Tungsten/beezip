@@ -54,7 +54,7 @@ module pre_hash_pe_scheduler(
         end
         for(i = 0; i < `NUM_HASH_PE; i = i+1) begin
             for(j = 0; j < `HASH_ISSUE_WIDTH; j = j+1) begin
-                stage_0_mask_vec_in[i*`HASH_ISSUE_WIDTH+j] = hash_value_arr[j][`HASH_BITS-1 -: `NUM_HASH_PE_LOG2] == i;
+                stage_0_mask_vec_in[i*`HASH_ISSUE_WIDTH+j] = hash_value_arr[j][`HASH_BITS-1 -: `NUM_HASH_PE_LOG2] == i[`NUM_HASH_PE_LOG2-1 : 0];
             end
         end
     end
@@ -118,7 +118,7 @@ module pre_hash_pe_scheduler(
     assign hprs_ready_out = {`NUM_HASH_PE{pingpong_reg_input_ready}};
 
     handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`HASH_BITS-`NUM_HASH_PE_LOG2+1) + (`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8),
-    .DEPTH(1)) stage_1_reg(
+    .DEPTH(2)) stage_1_reg(
         .clk(clk),
         .rst_n(rst_n),
 
