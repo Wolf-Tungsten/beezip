@@ -102,6 +102,6 @@ build_beezip_tb:
 	mkdir -p ${BEEZIP_SIM_DIR}/beezip_tb
 	verilator --cc --exe --build -j 8 --trace \
 	-f ${BEEZIP_TB_DIR}/beezip_tb.f -I${INC_DIR_PATH} \
-	${BEEZIP_TB_CSRC} -CFLAGS "-I${BEEZIP_TB_INC}" \
+	${BEEZIP_TB_CSRC} -CFLAGS "-I${BEEZIP_TB_INC} -std=c++17 -g -O0" \
 	--top-module beezip \
 	-Mdir ${BEEZIP_SIM_DIR}/beezip_tb

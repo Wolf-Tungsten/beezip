@@ -268,6 +268,25 @@ module hash_row_synchronizer (
         state_reg_d = next_state;
     end
 
+    always @(posedge clk) begin
+        if(~rst_n) begin
+        end else begin
+            if(stage_reg_valid & stage_reg_ready) begin
+                integer i;
+                for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
+                    $display("[hash_row_synchronizer output] head_addr=%0d, history_valid=%0d, history_addr=%0d, meta_match_len=%0d, meta_match_can_ext=%0d, delim=%0d, data=%0d",
+                    stage_reg_head_addr + i[`ADDR_WIDTH-1:0],
+                    stage_reg_history_valid[i],
+                    stage_reg_history_addr[i * `ADDR_WIDTH +: `ADDR_WIDTH],
+                    stage_reg_meta_match_len[i * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH],
+                    stage_reg_meta_match_can_ext[i],
+                    stage_reg_delim,
+                    stage_reg_data[i * 8 +: 8]);
+                end
+            end
+        end
+    end
+
     forward_reg #(.W(`ADDR_WIDTH+`HASH_ISSUE_WIDTH*((1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1))+1+`HASH_ISSUE_WIDTH*8)) stage_reg (
         .clk(clk),
         .rst_n(rst_n),

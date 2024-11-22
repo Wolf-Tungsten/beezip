@@ -13,13 +13,15 @@ BeeZipFileIO::BeeZipFileIO(std::string inputFilePath, const int jobLen,
     throw std::runtime_error("Failed to open input file");
   }
   inputFile.seekg(0, std::ios::end);
-  buffer.resize(inputFile.tellg());
+  int fileSize = inputFile.tellg();
+  if(fileSize % jobLen != 0) {
+    std::cout << "Warning: input file size is not multiple of jobLen, ignore the last " << fileSize % jobLen << " bytes" << std::endl;
+    fileSize -= fileSize % jobLen;
+  }
+  buffer.resize(fileSize);
   inputFile.seekg(0, std::ios::beg);
   inputFile.read(buffer.data(), buffer.size());
   inputFile.close();
-  if (buffer.size() % jobLen != 0) {
-    throw std::runtime_error("Input file size is not multiple of job length");
-  }
   headAddr = 0;
   outputFile.open(outputFilePath);
   if (!outputFile.is_open()) {
@@ -29,18 +31,30 @@ BeeZipFileIO::BeeZipFileIO(std::string inputFilePath, const int jobLen,
 
 BeeZipFileIO::~BeeZipFileIO() { outputFile.close(); }
 
-std::pair<int, std::vector<char>> BeeZipFileIO::readData() {
-  std::vector<char> dataSlice(buffer.begin() + headAddr,
+std::pair<int, std::vector<unsigned char>> BeeZipFileIO::readData() {
+  std::vector<unsigned char> dataSlice(buffer.begin() + headAddr,
                               buffer.begin() + headAddr + hashIssueWidth);
   return std::make_pair(headAddr += hashIssueWidth, dataSlice);
 }
 
-char BeeZipFileIO::probeData(int addr) { return buffer[addr]; }
+unsigned char BeeZipFileIO::probeData(int addr) { return buffer[addr]; }
 void BeeZipFileIO::writeSeq(int ll, int ml, int offset, bool eoj, bool delim,
-                            int overlapLen) {
+                            int overlap) {
   outputFile << ll << "," << ml << "," << offset << "," << eoj << "," << delim
-             << "," << overlapLen << std::endl;
+             << "," << overlap << std::endl;
 }
 
 int BeeZipFileIO::getFileSize() { return buffer.size(); }
+
+void BeeZipFileIO::writeThroughput(long length, long cycle) {
+  throughputFilePath = inputFilePath + ".throughput";
+  std::ofstream throughputFile(throughputFilePath);
+  if (!throughputFile.is_open()) {
+    throw std::runtime_error("Failed to open throughput file");
+  }
+  throughputFile << "length: " << length << std::endl;
+  throughputFile << "cycle: " << cycle << std::endl;
+  throughputFile << "throughput: " << (double)length / cycle << "bytes/cycle" << std::endl;
+  throughputFile.close();
+}
 }  // namespace beezip_tb

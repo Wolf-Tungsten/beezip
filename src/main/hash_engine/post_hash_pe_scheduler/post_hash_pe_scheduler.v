@@ -66,6 +66,25 @@ module post_hash_pe_scheduler (
         .output_ready(merge_output_ready)
     );
 
+    always @(posedge clk) begin
+        if(~rst_n) begin
+        end else begin
+            integer i;
+            if(merge_output_valid & merge_output_ready) begin
+                for(i = 0; i < `NUM_HASH_PE; i = i + 1) begin
+                    $display("[hash_row_merge output] head_addr=%0d, history_valid=%0d, history_addr=%0d, meta_match_len=%0d, meta_match_can_ext=%0d, delim=%0d, data=%0d",
+                    merge_output_addr[i * `ADDR_WIDTH +: `ADDR_WIDTH], 
+                    merge_output_history_valid[i], 
+                    merge_output_history_addr[i * `ADDR_WIDTH +: `ADDR_WIDTH], 
+                    merge_output_meta_match_len[i* `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH], 
+                    merge_output_meta_match_can_ext[i], 
+                    merge_output_delim[i], 
+                    merge_output_data[i*8 +: 8]);
+                end
+            end
+        end
+    end
+
     wire rc_output_valid;
     wire [`ADDR_WIDTH-1:0] rc_output_head_addr;
     wire [`HASH_ISSUE_WIDTH-1:0] rc_output_row_valid;
