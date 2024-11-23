@@ -13,7 +13,7 @@ module pingpong_reg #(parameter W=8)
     
 );
 
-    handshake_slice_reg #(.W(W), .DEPTH(2)) internal_handshake_reg (
+    fifo #(.W(W), .DEPTH(2)) internal_fifo (
         .clk(clk),
         .rst_n(rst_n),
         .input_valid(input_valid),

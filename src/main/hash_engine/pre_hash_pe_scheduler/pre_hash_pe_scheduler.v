@@ -117,8 +117,7 @@ module pre_hash_pe_scheduler(
     assign pingpong_reg_input_valid = |hprs_valid_out;
     assign hprs_ready_out = {`NUM_HASH_PE{pingpong_reg_input_ready}};
 
-    handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`HASH_BITS-`NUM_HASH_PE_LOG2+1) + (`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8),
-    .DEPTH(2)) stage_1_reg(
+    pingpong_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`HASH_BITS-`NUM_HASH_PE_LOG2+1) + (`HASH_ISSUE_WIDTH+`META_HISTORY_LEN-1)*8)) stage_1_reg(
         .clk(clk),
         .rst_n(rst_n),
 

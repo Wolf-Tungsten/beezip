@@ -122,7 +122,26 @@ module post_hash_pe_scheduler (
         .output_data(rc_output_data),
         .output_ready(rc_output_ready)
     );
-    
+    // 将 reorder_crossbar 的输出打印供调试检查
+    always @(posedge clk) begin
+        if(~rst_n) begin
+        end else begin
+            integer i;
+            if(rc_output_valid & rc_output_ready) begin
+                for(i = 0; i < `HASH_ISSUE_WIDTH; i = i + 1) begin
+                    $display("[reorder_crossbar output] head_addr=%0d, row_valid=%0d, history_valid=%0d, history_addr=%0d, meta_match_len=%0d, meta_match_can_ext=%0d, delim=%0d, data=%0d",
+                    rc_output_head_addr + i[`ADDR_WIDTH-1:0], 
+                    rc_output_row_valid[i], 
+                    rc_output_history_valid[i], 
+                    rc_output_history_addr[i * `ADDR_WIDTH +: `ADDR_WIDTH], 
+                    rc_output_meta_match_len[i* `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH], 
+                    rc_output_meta_match_can_ext[i], 
+                    rc_output_delim, 
+                    rc_output_data[i*8 +: 8]);
+                end
+            end
+        end
+    end 
     hash_row_synchronizer hrs(
         .clk(clk),
         .rst_n(rst_n),

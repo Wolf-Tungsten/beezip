@@ -13,6 +13,9 @@ module handshake_slice_reg #(parameter W=8, DEPTH=3)
     
 );
 
+    always @(posedge clk) begin
+        $fatal("should not be used at this time");
+    end
     wire fire_reg_d[DEPTH-1:0];
     wire fire_reg_q[DEPTH-1:0];
     wire ready_reg_d[DEPTH-1:0];
@@ -61,8 +64,18 @@ module handshake_slice_reg #(parameter W=8, DEPTH=3)
     assign fifo_in_valid = fire_reg_q[DEPTH-1] && (fifo_out_valid || !output_ready);
     assign fifo_in_payload = payload_reg_q[DEPTH-1];
     assign fifo_out_ready = output_ready;
+
+    always @(posedge clk) begin
+        if(~rst_n)begin
+        end else begin
+            if(fifo_in_valid && ~fifo_in_ready) begin
+                $display("handshake slice reg: fatal error, fifo overflow");
+                $fatal;
+            end
+        end
+    end
     
-    fifo #(.W(W), .DEPTH(DEPTH)) fifo_inst (
+    fifo #(.W(W), .DEPTH(DEPTH*2)) fifo_inst (
         .clk(clk),
         .rst_n(rst_n),
 

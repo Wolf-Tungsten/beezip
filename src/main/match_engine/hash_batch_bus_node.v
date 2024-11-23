@@ -65,9 +65,8 @@ module hash_batch_bus_node #(parameter [`NUM_JOB_PE_LOG2-1:0] IDX = '0, paramete
     generate
         if(PIPED) begin
             // create a handshake between this and next
-            handshake_slice_reg #(
-                .W(`ADDR_WIDTH + `HASH_ISSUE_WIDTH + `HASH_ISSUE_WIDTH*`ADDR_WIDTH + `HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH + `HASH_ISSUE_WIDTH + 1),
-                .DEPTH(2)
+            pingpong_reg #(
+                .W(`ADDR_WIDTH + `HASH_ISSUE_WIDTH + `HASH_ISSUE_WIDTH*`ADDR_WIDTH + `HASH_ISSUE_WIDTH*`META_MATCH_LEN_WIDTH + `HASH_ISSUE_WIDTH + 1)
             ) pipeline_reg (
                 .clk(clk),
                 .rst_n(rst_n),

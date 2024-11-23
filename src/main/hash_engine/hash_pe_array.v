@@ -389,8 +389,7 @@ module hash_pe_array(
         end
     end
 
-    handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`META_HISTORY_LEN*8+`ROW_SIZE*(1+`ADDR_WIDTH+`META_HISTORY_LEN*8)+1) + (`HASH_ISSUE_WIDTH*8)),
-    .DEPTH(2)) meta_shift_buffer (
+    forward_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`META_HISTORY_LEN*8+`ROW_SIZE*(1+`ADDR_WIDTH+`META_HISTORY_LEN*8)+1) + (`HASH_ISSUE_WIDTH*8))) meta_shift_buffer (
                     .clk(clk),
                     .rst_n(p_rst_n),
 
@@ -456,8 +455,7 @@ module hash_pe_array(
     wire [`NUM_HASH_PE-1:0] meta_mask_buffer_output_delim_vec;
     wire [`HASH_ISSUE_WIDTH*8-1:0] meta_mask_buffer_output_data;
 
-    handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`ROW_SIZE*(1+`ADDR_WIDTH+`META_HISTORY_LEN)+1) + (`HASH_ISSUE_WIDTH*8)),
-    .DEPTH(2)) meta_mask_buffer (
+    pingpong_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`ROW_SIZE*(1+`ADDR_WIDTH+`META_HISTORY_LEN)+1) + (`HASH_ISSUE_WIDTH*8))) meta_mask_buffer (
                     .clk(clk),
                     .rst_n(p_rst_n),
 
@@ -513,8 +511,7 @@ module hash_pe_array(
     endgenerate
 
 
-    handshake_slice_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`ROW_SIZE*(1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1)+1) + `HASH_ISSUE_WIDTH*8),
-                         .DEPTH(2)) meta_match_len_buffer (
+    pingpong_reg #(.W(`NUM_HASH_PE*(1+`ADDR_WIDTH+`ROW_SIZE*(1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1)+1) + `HASH_ISSUE_WIDTH*8)) meta_match_len_buffer (
         .clk(clk),
         .rst_n(p_rst_n),
         .input_valid(meta_mask_buffer_output_valid),

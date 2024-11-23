@@ -69,8 +69,7 @@ module single_crossbar (
                     .output_payload(stage_mux_meta_match_can_ext[i][j])
                 );
             end
-            handshake_slice_reg #(.W(out_num*(1+(1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1)))
-            , .DEPTH(2)) stage_reg (
+            pingpong_reg #(.W(out_num*(1+(1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1)))) stage_reg (
 
                 .clk(clk),
                 .rst_n(rst_n),
@@ -246,7 +245,7 @@ module reorder_crossbar (
     genvar gi;
     generate
         for(gi = 0; gi < CROSSBAR_STAGE; gi = gi + 1) begin
-            handshake_slice_reg #(.W(`ADDR_WIDTH+1+`HASH_ISSUE_WIDTH*8), .DEPTH(2)) crossbar_bypass_reg (
+            pingpong_reg #(.W(`ADDR_WIDTH+1+`HASH_ISSUE_WIDTH*8)) crossbar_bypass_reg (
                 .clk(clk),
                 .rst_n(rst_n),
 

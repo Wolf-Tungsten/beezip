@@ -123,6 +123,22 @@ module hash_engine(
         .output_ready(ready_between_pre_schd_pe_array) 
     );
 
+    always @(posedge clk) begin
+        if(~rst_n) begin
+        end else begin
+            integer  i;
+            for(i = 0; i < `NUM_HASH_PE; i = i + 1) begin
+                if(valid_between_pre_schd_pe_array && ready_between_pre_schd_pe_array) begin
+                    $display("[PreHashPeScheduler] mask=%d, addr=%d, hash_value=%d, delim=%d", 
+                    mask_between_pre_schd_pe_array[i], 
+                    addr_between_pre_schd_pe_array[i * `ADDR_WIDTH +: `ADDR_WIDTH], 
+                    hash_value_between_pre_schd_pe_array[i * (`HASH_BITS-`NUM_HASH_PE_LOG2) +: `HASH_BITS-`NUM_HASH_PE_LOG2], 
+                    delim_between_pre_schd_pe_array[i]);
+                end
+            end
+        end
+    end
+
     hash_pe_array u_hash_pe_array(
         .clk(clk),
         .rst_n(rst_n),

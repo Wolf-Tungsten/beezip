@@ -15,10 +15,10 @@ uint32_t portSeg32(VlWide<words> &port, int w, int i) {
   int endBit = end % 32;
   if(startWord != endWord) {
     // 跨越两个 32 位数据
-    return (port[startWord] >> startBit) | (port[endWord] & ((1 << (endBit + 1)) - 1) << (32 - startBit)); // 取两段拼接
+    return ((uint32_t)(port[startWord]) >> startBit) | ((port[endWord] & ((1 << (endBit + 1)) - 1)) << (32 - startBit)); // 取两段拼接
   } else {
     // 在一个 32 位数据中
-    return (port[startWord] >> startBit) & ((1 << (endBit - startBit + 1)) - 1);  // 取出一段
+    return ((uint32_t)(port[startWord]) >> startBit) & ((1 << (endBit - startBit + 1)) - 1);  // 取出一段
   }
 }
 

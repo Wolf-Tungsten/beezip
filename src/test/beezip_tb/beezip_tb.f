@@ -3,7 +3,6 @@ ${BEEZIP_SRC_DIR}/main/beezip.v
 ${BEEZIP_SRC_DIR}/main/common/fifo.v
 ${BEEZIP_SRC_DIR}/main/common/dff.v
 ${BEEZIP_SRC_DIR}/main/common/forward_reg.v
-${BEEZIP_SRC_DIR}/main/common/handshake_slice_reg.v
 ${BEEZIP_SRC_DIR}/main/common/pingpong_reg.v
 ${BEEZIP_SRC_DIR}/main/common/pop_count.v
 ${BEEZIP_SRC_DIR}/main/common/mux1h.v
