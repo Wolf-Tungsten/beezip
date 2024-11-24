@@ -11,7 +11,7 @@
 `include "util.vh"
 `include "log.vh"
 
-module job_pe (
+module job_pe #(parameter JOB_PE_IDX = 0) (
     input wire clk,
     input wire rst_n,
 
@@ -119,21 +119,21 @@ module job_pe (
       seq_head_ptr_reg   <= 0;
       match_head_ptr_reg <= 0;
     end else if (state_reg == S_SEEK_MATCH_HEAD) begin
-      $display("[job_pe @ %0t] HistoryValid=%b", $time, job_tbl_history_valid_reg);
+      $display("[job_pe %0d @ %0t] HistoryValid=%b", JOB_PE_IDX, $time, job_tbl_history_valid_reg);
       if((match_head_ptr_reg < `JOB_LEN - 8) && (job_tbl_history_valid_reg[match_head_ptr_reg +: 8] == 8'h00)) begin
-        $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 8", $time, seq_head_ptr_reg, match_head_ptr_reg);
+        $display("[job_pe %0d @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 8", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
         match_head_ptr_reg <= match_head_ptr_reg + 8;
       end else if ((match_head_ptr_reg < `JOB_LEN - 4) && (job_tbl_history_valid_reg[match_head_ptr_reg +: 4] == 4'h0)) begin
-        $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 4", $time, seq_head_ptr_reg, match_head_ptr_reg);
+        $display("[job_pe %0d @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 4", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
         match_head_ptr_reg <= match_head_ptr_reg + 4;
       end else if ((match_head_ptr_reg < `JOB_LEN - 1) && (job_tbl_history_valid_reg[match_head_ptr_reg] == 1'b0)) begin
-        $display("[job_pe @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 1", $time, seq_head_ptr_reg, match_head_ptr_reg);
+        $display("[job_pe %0d @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 1", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
         match_head_ptr_reg <= match_head_ptr_reg + 1;
       end
     end else if (state_reg == S_LAZY_SUMMARY) begin
       if (seq_valid && seq_ready) begin
-        $display("[job_pe @ %0t] S_LAZY_SUMMARY seq_ll=%d, seq_ml=%d, seq_offset=%d", $time, seq_ll, seq_ml, seq_offset);
-        $display("[job_pe @ %0t] S_LAZY_SUMMARY seq_head=%d, match_head=%d, move %d", $time, seq_head_ptr_reg, match_head_ptr_reg, move_forward);
+        $display("[job_pe %0d @ %0t] S_LAZY_SUMMARY seq_ll=%d, seq_ml=%d, seq_offset=%d", JOB_PE_IDX, $time, seq_ll, seq_ml, seq_offset);
+        $display("[job_pe %0d @ %0t] S_LAZY_SUMMARY seq_head=%d, match_head=%d, move %d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, move_forward);
         seq_head_ptr_reg <= seq_head_ptr_reg + move_forward;
         match_head_ptr_reg <= seq_head_ptr_reg + move_forward;
       end
@@ -158,7 +158,7 @@ module job_pe (
 
   always @(posedge clk) begin
     if(state_reg == S_SEEK_MATCH_HEAD && job_tbl_history_valid_reg[match_head_ptr_reg]) begin
-      $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD load match_head=%d into lazy tbl", $time, match_head_ptr_reg);
+      $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load match_head=%d into lazy tbl", JOB_PE_IDX, $time, match_head_ptr_reg);
       for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
         if({1'b0, match_head_ptr_reg} + i[`JOB_LEN_LOG2+1-1:0] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)];
@@ -202,6 +202,17 @@ module job_pe (
     .offset(lazy_tbl_offset_reg),
     .route_map(match_req_group_router_map)
   );
+
+  `ifdef JOB_PE_DEBUG_LOG
+  always @(posedge clk) begin
+    if (match_req_group_valid && match_req_group_ready) begin
+      $display("[job_pe %0d @ %0t] seq_head=%d, match_head=%d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+      for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+        $display("[job_pe %0d @ %0t] send match req[%0d] head_addr=%d, history_addr=%d, strb=%b, router_map=%0b", JOB_PE_IDX, $time, i, `VEC_SLICE(match_req_group_head_addr, i, `ADDR_WIDTH), `VEC_SLICE(match_req_group_history_addr, i, `ADDR_WIDTH), match_req_group_strb[i], `VEC_SLICE(match_req_group_router_map, i, `NUM_MATCH_REQ_CH));
+      end
+    end
+  end
+  `endif 
 
   assign match_resp_group_ready = state_reg == S_LAZY_MATCH_RESP;
 

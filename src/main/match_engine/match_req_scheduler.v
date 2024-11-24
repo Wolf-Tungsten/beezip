@@ -25,8 +25,10 @@ match_req_scheduler
 */
 `include "parameters.vh"
 `include "util.vh"
+`include "log.vh"
 
 module match_req_scheduler #(
+    parameter JOB_PE_IDX = 0,
     parameter LAZY_LEN = `LAZY_LEN,                       // The number of Match Requests in a group
     parameter M        = `NUM_MATCH_REQ_CH               // The number of Match Req Channal
 ) (
@@ -83,10 +85,13 @@ module match_req_scheduler #(
 
     assign match_req_group_ready = state_reg == S_WAIT_REQ;
     always @(posedge clk) begin
-        if(state_reg == S_WAIT_REQ) begin
-            head_addr_reg <= match_req_group_head_addr;
-            history_addr_reg <= match_req_group_history_addr;
-            router_map_reg <= match_req_group_router_map;
+        if(~rst_n) begin
+        end else begin
+            if(state_reg == S_WAIT_REQ && match_req_group_valid) begin
+                head_addr_reg <= match_req_group_head_addr;
+                history_addr_reg <= match_req_group_history_addr;
+                router_map_reg <= match_req_group_router_map;
+            end
         end
     end
 
@@ -110,7 +115,9 @@ module match_req_scheduler #(
     - current_issue[i]：当前请求是否被调度，用来更新 pending_reg
   */
     reg [M-1:0] prev_occupied_map [LAZY_LEN-1:0];
+    /* verilator lint_off UNOPTFLAT */
     reg [M-1:0] current_avaliable_map [LAZY_LEN-1:0];
+    /* verilator lint_on UNOPTFLAT */
     wire [M-1:0] current_1h_map [LAZY_LEN-1:0];
     wire [LAZY_LEN-1:0] current_1h_map_trans [M-1:0];
     wire [LAZY_LEN-1:0] current_issue;
@@ -121,6 +128,7 @@ module match_req_scheduler #(
 
     always @(*) begin
         prev_occupied_map[0] = '0;
+        current_avaliable_map[0] = {M{pending_reg[0]}} & match_req_ready & `VEC_SLICE(router_map_reg, 0, M);
         for (i = 1; i < LAZY_LEN; i = i + 1) begin
             prev_occupied_map[i] = prev_occupied_map[i-1] | current_1h_map[i-1];
             current_avaliable_map[i] = {M{pending_reg[i]}} & match_req_ready & `VEC_SLICE(router_map_reg, i, M) & ~prev_occupied_map[i];
@@ -129,6 +137,12 @@ module match_req_scheduler #(
 
   genvar gi, gj;
   generate
+    for (gi = 0; gi < LAZY_LEN; gi = gi + 1 ) begin
+        priority_selector #(.W(M)) current_1h_sel (
+            .input_vec(current_avaliable_map[gi]),
+            .output_vec(current_1h_map[gi])
+        );
+    end
     for(gi = 0; gi < LAZY_LEN; gi = gi+1) begin
         assign current_issue[gi] = |current_avaliable_map[gi];
     end
@@ -141,7 +155,7 @@ module match_req_scheduler #(
         assign `VEC_SLICE(group_tag, gi, `LAZY_LEN_LOG2) = gi[`LAZY_LEN_LOG2-1:0];
     end
     for(gj = 0; gj < M; gj = gj+1) begin
-        assign match_req_valid[gj] = (state_reg == S_WAIT_REQ) & |current_1h_map_trans[gj];
+        assign match_req_valid[gj] = (state_reg == S_SCHED) & |current_1h_map_trans[gj];
         mux1h #(.P_CNT(LAZY_LEN), .P_W(`ADDR_WIDTH)) head_addr_sel (
             .input_payload_vec(head_addr_reg),
             .input_select_vec(current_1h_map_trans[gj]),
@@ -171,4 +185,21 @@ module match_req_scheduler #(
         end
     end
   end
+
+  `ifdef JOB_PE_DEBUG_LOG
+    always @(posedge clk) begin
+        for(integer i = 0; i < `NUM_MATCH_REQ_CH; i = i + 1) begin
+            if(match_req_valid[i] & match_req_ready[i]) begin
+                $display(
+                    "[match_req_scheduler %0d @ %0t] send request head_addr = %0d, history_addr = %0d, tag = %0d to request channel %0d",
+                    JOB_PE_IDX, $time, 
+                    `VEC_SLICE(match_req_head_addr, i, `ADDR_WIDTH), 
+                    `VEC_SLICE(match_req_history_addr, i, `ADDR_WIDTH),
+                    `VEC_SLICE(match_req_tag, i, `LAZY_LEN_LOG2),
+                    i
+                );
+            end
+        end
+    end
+  `endif
 endmodule

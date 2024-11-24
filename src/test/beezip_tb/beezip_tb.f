@@ -8,6 +8,7 @@ ${BEEZIP_SRC_DIR}/main/common/pop_count.v
 ${BEEZIP_SRC_DIR}/main/common/mux1h.v
 ${BEEZIP_SRC_DIR}/main/common/sram2p.v
 ${BEEZIP_SRC_DIR}/main/common/priority_encoder.v
+${BEEZIP_SRC_DIR}/main/common/priority_selector.v
 ${BEEZIP_SRC_DIR}/main/common/match_len_encoder.v
 ${BEEZIP_SRC_DIR}/main/hash_engine/hash_engine.v
 ${BEEZIP_SRC_DIR}/main/hash_engine/input_leftover_buffer.v

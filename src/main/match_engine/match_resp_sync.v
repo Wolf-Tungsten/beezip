@@ -8,8 +8,10 @@ match_resp_sync
 
 `include "parameters.vh"
 `include "util.vh"
+`include "log.vh"
 
 module match_resp_sync #(
+    parameter JOB_PE_IDX = 0,
     parameter L = `LAZY_LEN,
     parameter C = `NUM_MATCH_REQ_CH,
     parameter TAG_BITS = `LAZY_LEN_LOG2,
@@ -18,7 +20,7 @@ module match_resp_sync #(
     input wire clk,
     input wire rst_n,
 
-    input req_group_valid,
+    input req_group_fire,
     input [L-1:0] req_group_strb,
 
     input wire [C-1:0] resp_valid,
@@ -58,7 +60,10 @@ module match_resp_sync #(
             done_reg <= '0;
             match_len_reg <= '0;
         end else begin
-            if(req_group_valid) begin
+            if(req_group_fire) begin
+                `ifdef JOB_PE_DEBUG_LOG
+                    $display("[match_resp_sync %0d @ %0t] load done_reg = b%b", JOB_PE_IDX, $time, ~req_group_strb);
+                `endif
                 done_reg <= ~req_group_strb;
             end else if(|(resp_ready & resp_valid)) begin
                 done_reg <= done_reg | valid_vec;
