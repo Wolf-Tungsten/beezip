@@ -161,7 +161,11 @@ module job_match_pe_cluster #(
                                    (i == 2) ? `MATCH_PE_2_SIZE_LOG2 : 0;
       match_pe #(
           .TAG_BITS (`LAZY_LEN_LOG2),
-          .SIZE_LOG2(size_log2)
+          .SIZE_LOG2(size_log2),
+          .LABEL("local_match_pe"),
+          .JOB_PE_IDX(JOB_PE_IDX),
+          .MATCH_PE_IDX(i)
+          //.LABEL($sformatf("job_pe_%0d_match_pe_%0d", JOB_PE_IDX, i))
       ) local_match_pe_inst (
           .clk(clk),
           .rst_n(rst_n),
