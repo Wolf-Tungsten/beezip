@@ -78,7 +78,8 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "csignal": "cpp"
     },
     "C_Cpp.clang_format_fallbackStyle": "Microsoft",
     "C_Cpp.clang_format_style": "Google",

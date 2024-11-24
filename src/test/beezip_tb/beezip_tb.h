@@ -45,5 +45,6 @@ class BeeZipTestbench {
   void serveOutput();
   void checkHashResult();
   void checkAndWriteSeq();
+  
 };
 }  // namespace beezip_tb

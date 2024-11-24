@@ -5,7 +5,7 @@ namespace beezip_tb {
 template <unsigned long words>
 uint32_t portSeg32(VlWide<words> &port, int w, int i) {
   int start = i * w;
-  int end = (i + 1) * w - 1; // 包含 end
+  int end = (i + 1) * w - 1;  // 包含 end
   // port 数据以多个 32 位的数据组成，这里取出其中的一段
   // 每个数字可能跨越两个 32 位的数据，或者是一个 32 位数据中的一段
   // 先判断是跨越还是在一个 32 位数据中
@@ -13,12 +13,15 @@ uint32_t portSeg32(VlWide<words> &port, int w, int i) {
   int endWord = end / 32;
   int startBit = start % 32;
   int endBit = end % 32;
-  if(startWord != endWord) {
+  if (startWord != endWord) {
     // 跨越两个 32 位数据
-    return ((uint32_t)(port[startWord]) >> startBit) | ((port[endWord] & ((1 << (endBit + 1)) - 1)) << (32 - startBit)); // 取两段拼接
+    return ((uint32_t)(port[startWord]) >> startBit) |
+           ((port[endWord] & ((1 << (endBit + 1)) - 1))
+            << (32 - startBit));  // 取两段拼接
   } else {
     // 在一个 32 位数据中
-    return ((uint32_t)(port[startWord]) >> startBit) & ((1 << (endBit - startBit + 1)) - 1);  // 取出一段
+    return ((uint32_t)(port[startWord]) >> startBit) &
+           ((1 << (endBit - startBit + 1)) - 1);  // 取出一段
   }
 }
 
@@ -36,7 +39,9 @@ bool portBit(VlWide<words> &port, int i) {
 }
 
 template <typename T>
-bool portBit(T &port, int i) { return (port >> i) & 1; }
+bool portBit(T &port, int i) {
+  return (port >> i) & 1;
+}
 
 BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
                                  std::unique_ptr<Vbeezip> &dut,
@@ -55,6 +60,7 @@ BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
 }
 
 BeeZipTestbench::~BeeZipTestbench() { dut->final(); }
+
 
 void BeeZipTestbench::run() {
   dut->clk = 0;
@@ -93,7 +99,7 @@ void BeeZipTestbench::run() {
     std::cerr << e.what() << std::endl;
   }
   tfp->close();
-  fileIOptr->writeThroughput(fileIOptr->getFileSize(), contextp->time()/2);
+  fileIOptr->writeThroughput(fileIOptr->getFileSize(), contextp->time() / 2);
 }
 
 void BeeZipTestbench::serveInput() {
@@ -101,7 +107,8 @@ void BeeZipTestbench::serveInput() {
     dut->i_valid = 1;
     auto [nextAddr, data] = fileIOptr->readData();
     for (int i = 0; i < HASH_ISSUE_WIDTH / 4; i++) {
-      dut->i_data[i] = ((uint32_t)data[i * 4]) | (((uint32_t)data[i * 4 + 1]) << 8) |
+      dut->i_data[i] = ((uint32_t)data[i * 4]) |
+                       (((uint32_t)data[i * 4 + 1]) << 8) |
                        (((uint32_t)data[i * 4 + 2]) << 16) |
                        (((uint32_t)data[i * 4 + 3]) << 24);
     }
@@ -130,7 +137,7 @@ void BeeZipTestbench::serveOutput() {
 
 void BeeZipTestbench::checkHashResult() {
   int headAddr = dut->dbg_hash_engine_o_head_addr;
-  bool delim = dut->dbg_hash_engine_o_delim; 
+  bool delim = dut->dbg_hash_engine_o_delim;
   if (delim) {
     if ((headAddr + HASH_ISSUE_WIDTH) % BLOCK_LEN != 0) {
       throw std::runtime_error("Delim not match");
@@ -145,7 +152,7 @@ void BeeZipTestbench::checkHashResult() {
     bool meta_match_can_ext =
         portBit(dut->dbg_hash_engine_o_meta_match_can_ext, i);
     uint32_t data = portSeg32(dut->dbg_hash_engine_o_data, 8, i);
-    if(fileIOptr->probeData(headAddr + i) != data) {
+    if (fileIOptr->probeData(headAddr + i) != data) {
       std::cout << "headAddr: " << headAddr + i << std::endl;
       throw std::runtime_error("hash data not match");
     }
@@ -158,7 +165,6 @@ void BeeZipTestbench::checkHashResult() {
       for (int j = 0; j < meta_match_len; j++) {
         if (fileIOptr->probeData(history_addr + j) !=
             fileIOptr->probeData(headAddr + i + j)) {
-              
           throw std::runtime_error("meta match error");
         }
       }

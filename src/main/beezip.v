@@ -33,25 +33,7 @@ module beezip (
     output wire dbg_hash_engine_o_delim,
     output wire dbg_hash_engine_o_ready
 );
-    wire data_fifo_input_valid;
-    wire [`HASH_ISSUE_WIDTH*8-1:0] data_fifo_input_data;
-    wire data_fifo_input_ready;
 
-    wire data_fifo_output_valid;
-    wire [`HASH_ISSUE_WIDTH*8-1:0] data_fifo_output_data;
-    wire data_fifo_output_ready;
-
-    fifo #(.W(`HASH_ISSUE_WIDTH*8), .DEPTH(`MATCH_ENGINE_DATA_FIFO_DEPTH)) match_engine_data_fifo (
-        .clk(clk),
-        .rst_n(rst_n),
-        .input_valid(data_fifo_input_valid),
-        .input_payload(data_fifo_input_data),
-        .input_ready(data_fifo_input_ready),
-
-        .output_valid(data_fifo_output_valid),
-        .output_payload(data_fifo_output_data),
-        .output_ready(data_fifo_output_ready)
-    );
 
     wire hash_engine_o_valid;
     wire [`ADDR_WIDTH-1:0] hash_engine_o_head_addr;
