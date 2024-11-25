@@ -1,4 +1,5 @@
 `include "parameters.vh"
+`include "log.vh"
 `default_nettype none
 module hash_engine(
     input wire clk,
@@ -123,21 +124,21 @@ module hash_engine(
         .output_ready(ready_between_pre_schd_pe_array) 
     );
 
-    always @(posedge clk) begin
-        if(~rst_n) begin
-        end else begin
-            integer  i;
-            for(i = 0; i < `NUM_HASH_PE; i = i + 1) begin
-                if(valid_between_pre_schd_pe_array && ready_between_pre_schd_pe_array) begin
-                    $display("[PreHashPeScheduler] mask=%d, addr=%d, hash_value=%d, delim=%d", 
-                    mask_between_pre_schd_pe_array[i], 
-                    addr_between_pre_schd_pe_array[i * `ADDR_WIDTH +: `ADDR_WIDTH], 
-                    hash_value_between_pre_schd_pe_array[i * (`HASH_BITS-`NUM_HASH_PE_LOG2) +: `HASH_BITS-`NUM_HASH_PE_LOG2], 
-                    delim_between_pre_schd_pe_array[i]);
-                end
-            end
-        end
-    end
+    // always @(posedge clk) begin
+    //     if(~rst_n) begin
+    //     end else begin
+    //         integer  i;
+    //         for(i = 0; i < `NUM_HASH_PE; i = i + 1) begin
+    //             if(valid_between_pre_schd_pe_array && ready_between_pre_schd_pe_array) begin
+    //                 $display("[pre_hash_pe_scheduler] mask=%d, addr=%d, hash_value=%d, delim=%d", 
+    //                 mask_between_pre_schd_pe_array[i], 
+    //                 addr_between_pre_schd_pe_array[i * `ADDR_WIDTH +: `ADDR_WIDTH], 
+    //                 hash_value_between_pre_schd_pe_array[i * (`HASH_BITS-`NUM_HASH_PE_LOG2) +: `HASH_BITS-`NUM_HASH_PE_LOG2], 
+    //                 delim_between_pre_schd_pe_array[i]);
+    //             end
+    //         end
+    //     end
+    // end
 
     hash_pe_array u_hash_pe_array(
         .clk(clk),
@@ -191,16 +192,27 @@ module hash_engine(
         .output_ready(o_ready)
     );
 
-    `ifdef HASH_RESULT_LOG
-        always @(posedge clk) begin
-            integer log_i;
-            if(output_valid && output_ready) begin
-                for(log_i = 0; log_i < `HASH_ISSUE_WIDTH; log_i = log_i + 1) begin
-                    if(output_history_valid_vec[log_i]) begin
-                        $display("[HashResult] head_addr=%d, hist_addr=%d", output_head_addr + log_i, output_history_addr_vec[log_i * `ADDR_WIDTH  +: `ADDR_WIDTH]);
-                    end
-                end
+    `ifdef HASH_ENGINE_DEBUG_LOG
+    always @(posedge clk) begin
+        if(!rst_n) begin
+        end else begin
+            if(o_valid && o_ready) begin
+                $display("[HashEngine] head_addr=%0d, data=0x%0h", o_head_addr, o_data);
             end
         end
-    `endif
+    end
+    `endif 
+
+    // `ifdef HASH_RESULT_LOG
+    //     always @(posedge clk) begin
+    //         integer log_i;
+    //         if(output_valid && output_ready) begin
+    //             for(log_i = 0; log_i < `HASH_ISSUE_WIDTH; log_i = log_i + 1) begin
+    //                 if(output_history_valid_vec[log_i]) begin
+    //                     $display("[HashResult] head_addr=%d, hist_addr=%d", output_head_addr + log_i, output_history_addr_vec[log_i * `ADDR_WIDTH  +: `ADDR_WIDTH]);
+    //                 end
+    //             end
+    //         end
+    //     end
+    // `endif
 endmodule

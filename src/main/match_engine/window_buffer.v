@@ -25,6 +25,7 @@ module window_buffer #(parameter SIZE_BYTES_LOG2=15, NBPIPE=3) (
     assign {read_address_hi, read_address_lo} = read_address;
     assign {write_address_hi, write_address_lo} = write_address;
 
+    reg init_flag;
     reg has_two_range_reg;
     reg [`ADDR_WIDTH-SIZE_BYTES_LOG2-1:0] range_0_hi_reg, range_1_hi_reg;
     reg [SIZE_BYTES_LOG2-1:0] latest_write_address_lo_reg;
@@ -34,15 +35,19 @@ module window_buffer #(parameter SIZE_BYTES_LOG2=15, NBPIPE=3) (
             range_0_hi_reg <= 0;
             range_1_hi_reg <= 0;
             latest_write_address_lo_reg <= 0;
+            init_flag <= 1'b1;
         end else begin
             if(write_enable) begin
                 latest_write_address_lo_reg <= write_address_lo;
                 if(write_address_lo == 0) begin
-                    has_two_range_reg <= 1'b1;
-                    range_1_hi_reg <= range_0_hi_reg;
-                    range_0_hi_reg <= write_address_hi;
+                    if(!init_flag) begin
+                        has_two_range_reg <= 1'b1;
+                        range_1_hi_reg <= range_0_hi_reg;
+                        range_0_hi_reg <= write_address_hi;
+                    end
                 end else if (write_address_lo == tail_bar) begin
                     has_two_range_reg <= 1'b0;
+                    init_flag <= 1'b0;
                 end
             end
         end
@@ -52,16 +57,16 @@ module window_buffer #(parameter SIZE_BYTES_LOG2=15, NBPIPE=3) (
     wire [`ADDR_WIDTH-1:0] range_0_start, range_0_end, range_1_start, range_1_end;
     wire [SIZE_BYTES_LOG2-1:0] latest_write_address_lo_plus_match_pe_width = latest_write_address_lo_reg + `MATCH_PE_WIDTH;
     assign range_0_start = {range_0_hi_reg, {SIZE_BYTES_LOG2{1'b0}}};
-    assign range_0_end = {range_0_hi_reg, has_two_range_reg ? latest_write_address_lo_reg : tail_bar};
+    assign range_0_end = {range_0_hi_reg, (has_two_range_reg | init_flag) ? latest_write_address_lo_reg : tail_bar};
     assign range_1_start = {range_1_hi_reg, latest_write_address_lo_plus_match_pe_width};
     assign range_1_end = {range_1_hi_reg, tail_bar};
     always @(*) begin
         read_unsafe_internal = 1'b0;
         if(has_two_range_reg) begin
-            read_unsafe_internal = (read_address >= range_0_start && read_address <= range_0_end) || 
-                                   (read_address >= range_1_start && read_address <= range_1_end);
+            read_unsafe_internal = ~((read_address >= range_0_start && read_address <= range_0_end) || 
+                                   (read_address >= range_1_start && read_address <= range_1_end));
         end else begin
-            read_unsafe_internal = (read_address >= range_0_start && read_address <= range_0_end);
+            read_unsafe_internal = ~(read_address >= range_0_start && read_address <= range_0_end);
         end
     end
     

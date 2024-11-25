@@ -203,17 +203,6 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
     .route_map(match_req_group_router_map)
   );
 
-  `ifdef JOB_PE_DEBUG_LOG
-  always @(posedge clk) begin
-    if (match_req_group_valid && match_req_group_ready) begin
-      $display("[job_pe %0d @ %0t] seq_head=%d, match_head=%d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
-      for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
-        $display("[job_pe %0d @ %0t] send match req[%0d] head_addr=%d, history_addr=%d, strb=%b, router_map=%0b", JOB_PE_IDX, $time, i, `VEC_SLICE(match_req_group_head_addr, i, `ADDR_WIDTH), `VEC_SLICE(match_req_group_history_addr, i, `ADDR_WIDTH), match_req_group_strb[i], `VEC_SLICE(match_req_group_router_map, i, `NUM_MATCH_REQ_CH));
-      end
-    end
-  end
-  `endif 
-
   assign match_resp_group_ready = state_reg == S_LAZY_MATCH_RESP;
 
   // lazy summary part logic
@@ -331,6 +320,18 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   end
 
 
-
+  `ifdef JOB_PE_DEBUG_LOG
+  always @(posedge clk) begin
+    if (match_req_group_valid && match_req_group_ready) begin
+      $display("[job_pe %0d @ %0t] seq_head=%d, match_head=%d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+      for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+        $display("[job_pe %0d @ %0t] send match req[%0d] head_addr=%d, history_addr=%d, strb=%b, router_map=%0b", JOB_PE_IDX, $time, i, `VEC_SLICE(match_req_group_head_addr, i, `ADDR_WIDTH), `VEC_SLICE(match_req_group_history_addr, i, `ADDR_WIDTH), match_req_group_strb[i], `VEC_SLICE(match_req_group_router_map, i, `NUM_MATCH_REQ_CH));
+      end
+    end
+    if (seq_valid && seq_ready) begin
+      $display("[job_pe %0d @ %0t] send seq, seq_ll=%d, seq_ml=%d, seq_offset=%d, seq_eoj=%b, seq_overlap_len=%d, seq_delim=%b", JOB_PE_IDX, $time, seq_valid, seq_ll, seq_ml, seq_offset, seq_eoj, seq_overlap_len, seq_delim);
+    end
+  end
+  `endif 
 
 endmodule

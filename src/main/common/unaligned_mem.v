@@ -51,10 +51,10 @@ module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15, NBPIPE=3) (
             if(read_enable) begin
                 bank_read_sel_reg[0] <= bank_read_sel;
                 read_shift_bytes_reg[0] <= read_shift_bytes;
-                for(i=1; i < NBPIPE+1; i=i+1) begin
-                    bank_read_sel_reg[i] <= bank_read_sel_reg[i-1];
-                    read_shift_bytes_reg[i] <= read_shift_bytes_reg[i-1];
-                end
+            end
+            for(i=1; i < NBPIPE+1; i=i+1) begin
+                bank_read_sel_reg[i] <= bank_read_sel_reg[i-1];
+                read_shift_bytes_reg[i] <= read_shift_bytes_reg[i-1];
             end
         end
     end

@@ -78,7 +78,7 @@ module match_pe #(
 
   // 猝发计数器
   reg [`ADDR_WIDTH-1:0] burst_addr_bias_reg;
-  localparam MAX_BURST_ADDR_BIAS = `MATCH_BURST_LEN * `MATCH_PE_WIDTH;
+  localparam MAX_BURST_ADDR_BIAS = (`MATCH_BURST_LEN - 1) * `MATCH_PE_WIDTH;
   // 该把哪个条目发射到流水线上呢？
   reg  [SCOREBOARD_ENTRY_INDEX-1:0] issue_entry_reg;
   wire [SCOREBOARD_ENTRY_INDEX-1:0] next_issue_entry = issue_entry_reg + 1;
@@ -98,12 +98,22 @@ module match_pe #(
   end
 
   // 流水线发射信号
-  wire pipeline_i_valid = has_wait_entry;
+  wire pipeline_i_valid = scoreboard_wait_reg[issue_entry_reg];
   wire [SCOREBOARD_ENTRY_INDEX-1:0] pipeline_i_idx = issue_entry_reg;
   wire pipeline_i_last = (burst_addr_bias_reg == MAX_BURST_ADDR_BIAS);
   wire [`ADDR_WIDTH-1:0] pipeline_i_head_addr = scoreboard_head_addr_reg[issue_entry_reg] + burst_addr_bias_reg;
   wire [`ADDR_WIDTH-1:0] pipeline_i_history_addr = scoreboard_history_addr_reg[issue_entry_reg] + burst_addr_bias_reg;
 
+`ifdef MATCH_PE_DEBUG_LOG
+  always @(posedge clk) begin
+    if (pipeline_i_valid) begin
+      $display(
+          "[%s @ %0t] job_pe %0d, id %0d, issue pipeline entry %0d, head_addr = %0d, history_addr = %0d",
+          LABEL, $time, JOB_PE_IDX, MATCH_PE_IDX, issue_entry_reg, pipeline_i_head_addr,
+          pipeline_i_history_addr);
+    end
+  end
+`endif
   // 流水线回收信号
   wire pipeline_o_valid;
   wire pipeline_o_last;
@@ -144,11 +154,8 @@ module match_pe #(
       end else begin
         if (~scoreboard_occupied_reg[i]) begin
           if(match_req_valid) begin // 有 match 请求来到 match pe，确定该放在哪个条目上
-            if (next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
-              // 当前条目未占用，并且是下一个要发射的条目，则放到当前条目
-              scoreboard_occupied_reg[i] <= 1'b1;
-            end else if (scoreboard_occupied_reg[next_issue_entry] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry)) begin
-              // 下一个要发射的条目已经被占用了，并且当前条目是第一个空闲的条目，则放置到当前条目
+            if (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry) begin
+              // 当前条目是第一个未被占用的条目
               scoreboard_occupied_reg[i] <= 1'b1;
             end
           end
@@ -172,11 +179,7 @@ module match_pe #(
           if (match_req_valid) begin
             // 这里的逻辑和标记 occupied 是一样的
             // 因为一个请求进入到 scoreboard 之后，在未处理前就处于等待状态
-            if (next_issue_entry == i[SCOREBOARD_ENTRY_INDEX-1:0]) begin
-              // 下一个要发射的条目就是我
-              scoreboard_wait_reg[i] <= 1'b1;
-            end else if (scoreboard_occupied_reg[next_issue_entry] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry)) begin
-              // 下一个要发射的条目已经被占用了，并且当前条目是第一个空闲的条目
+            if (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_free_entry) begin
               scoreboard_wait_reg[i] <= 1'b1;
             end
           end
@@ -209,6 +212,11 @@ module match_pe #(
           end
         end else if(scoreboard_done_reg[i] && (i[SCOREBOARD_ENTRY_INDEX-1:0] == first_done_entry)) begin // 作为第一个完成的条目
           if (match_resp_ready) begin  // 响应已发出
+`ifdef MATCH_PE_DEBUG_LOG
+            $display(
+                "[%s @ %0t] job_pe %0d, id %0d, send resp of scoreboard entry %0d, match_len=%0d, tag=%0d",
+                LABEL, $time, JOB_PE_IDX, MATCH_PE_IDX, i, match_resp_match_len, match_resp_tag);
+`endif
             scoreboard_done_reg[i] <= 1'b0;  // 清除完成标记
           end
         end
@@ -230,7 +238,8 @@ module match_pe #(
 `ifdef MATCH_PE_DEBUG_LOG
           $display(
               "[%s @ %0t] job_pe %0d, id %0d, load scoreboard entry %0d, head_addr = %0d, history_addr = %0d, tag = %0d",
-              LABEL, $time, JOB_PE_IDX, MATCH_PE_IDX, i, match_req_head_addr, match_req_history_addr, match_req_tag);
+              LABEL, $time, JOB_PE_IDX, MATCH_PE_IDX, i, match_req_head_addr,
+              match_req_history_addr, match_req_tag);
 `endif
         end
       end else if(scoreboard_occupied_reg[i] && ~scoreboard_done_reg[i]) begin // 考虑到猝发长度比流水线长的情况，所以只要是在占用且未完成状态都是可以更新的
@@ -239,8 +248,8 @@ module match_pe #(
             scoreboard_match_len_reg[i] <= scoreboard_match_len_reg[i] + pipeline_o_match_len; // 更新匹配长度
             if(pipeline_o_last) begin // 如果是当前猝发中的最后一个结果，那么更新地址，以准备好下一轮的猝发请求
               // 这里没有判断是否饱和，因为如果不饱和，就直接输出了
-              scoreboard_head_addr_reg[i] <= scoreboard_head_addr_reg[i] + MAX_BURST_ADDR_BIAS;
-              scoreboard_history_addr_reg[i] <= scoreboard_history_addr_reg[i] + MAX_BURST_ADDR_BIAS;
+              scoreboard_head_addr_reg[i] <= scoreboard_head_addr_reg[i] + (MAX_BURST_ADDR_BIAS + `MATCH_PE_WIDTH);
+              scoreboard_history_addr_reg[i] <= scoreboard_history_addr_reg[i] + (MAX_BURST_ADDR_BIAS + `MATCH_PE_WIDTH);
             end else if (pipeline_o_match_len != `MATCH_PE_WIDTH) begin
               scoreboard_match_contd_reg[i] <= 1'b0; // 如果匹配长度不饱和，后续的就要被丢弃了
             end

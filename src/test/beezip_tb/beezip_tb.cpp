@@ -98,6 +98,7 @@ void BeeZipTestbench::run() {
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
+  std::cout << "Simulation finished" << std::endl;
   tfp->close();
   fileIOptr->writeThroughput(fileIOptr->getFileSize(), contextp->time() / 2);
 }

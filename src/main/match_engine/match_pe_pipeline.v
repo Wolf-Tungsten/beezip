@@ -1,5 +1,6 @@
 `include "parameters.vh"
 `include "util.vh"
+`include "log.vh"
 
 module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LOG2=15) (
     input wire clk,
@@ -51,6 +52,28 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
         .read_unsafe(head_buf_read_unsafe),
         .read_data(head_buf_read_data)
     );
+
+    `ifdef MATCH_PE_DEBUG_LOG
+    wire dbg_valid;
+    wire [`ADDR_WIDTH-1:0] dbg_head_addr, dbg_history_addr;
+    dff #(.W(1+`ADDR_WIDTH*2), .EN(0), .RST(1), .RST_V(0), .PIPE_DEPTH(NBPIPE+1), .RETIMING(0)) debug_addr_reg (
+        .clk(clk),
+        .rst_n(rst_n),
+        .d({i_valid, i_head_addr, i_history_addr}),
+        .en(1'b1),
+        .q({dbg_valid, dbg_head_addr, dbg_history_addr})
+    );
+    always @(posedge clk) begin
+        if (i_write_enable) begin
+            $display("[match_pe_pipeline @ %0t] write write_addr=%0d, write_data=0x%0h", $time, i_write_addr, i_write_data);
+        end
+        if (dbg_valid) begin
+            $display("[match_pe_pipeline @ %0t] read head_addr=%0d, head_data=0x%0h,  history_addr=%0d, history_data=0x%0h",
+                $time, dbg_head_addr, head_buf_read_data,
+                dbg_history_addr, hist_buf_read_data);
+        end
+    end
+    `endif
 
 
     reg [`MATCH_PE_WIDTH-1:0] bytewise_compare_result_reg;
