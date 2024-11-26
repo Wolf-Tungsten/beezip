@@ -2,6 +2,8 @@
 
 namespace beezip_tb {
 
+std::atomic<bool> BeeZipTestbench::interruptSimulation;
+
 template <unsigned long words>
 uint32_t portSeg32(VlWide<words> &port, int w, int i) {
   int start = i * w;
@@ -57,16 +59,29 @@ BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
       std::make_unique<BeeZipFileIO>(inputFilePath, JOB_LEN, HASH_ISSUE_WIDTH);
   this->hqt = hqt;
   this->enableHashCheck = enableHashCheck;
+  interruptSimulation = false;
+  std::signal(SIGSEGV, beezip_tb::BeeZipTestbench::signalHandler);
+  std::signal(SIGINT, beezip_tb::BeeZipTestbench::signalHandler);
 }
 
 BeeZipTestbench::~BeeZipTestbench() { dut->final(); }
 
+void BeeZipTestbench::signalHandler(int signal) {
+  if (signal == SIGSEGV) {
+    std::cerr << "Segmentation fault detected" << std::endl;
+    std::exit(signal);  // 退出程序
+  } else if (signal == SIGINT) {
+    std::cerr << "Interrupt signal detected" << std::endl;
+    interruptSimulation = true;
+  }
+}
 
 void BeeZipTestbench::run() {
   dut->clk = 0;
   dut->rst_n = !1;
   inputEof = false;
   outputEof = false;
+  nextVerifyAddr = 0;
   dut->i_valid = 0;
   dut->o_seq_packet_ready = 0;
   dut->cfg_max_queued_req_num = hqt;
@@ -81,7 +96,7 @@ void BeeZipTestbench::run() {
     dut->o_seq_packet_ready = 1;
     dut->rst_n = !0;
     // main loop
-    while (!outputEof) {
+    while (!interruptSimulation && !outputEof) {
       dut->clk = !dut->clk;
       if (dut->clk) {
         if (!inputEof) {
@@ -187,6 +202,11 @@ void BeeZipTestbench::checkAndWriteSeq() {
       bool eoj = portBit(dut->o_seq_packet_eoj, i);
       bool delim = portBit(dut->o_seq_packet_delim, i);
       int overlap = portSeg32(dut->o_seq_packet_overlap, SEQ_ML_BITS, i);
+      std::cout << "[testbench @ " << contextp->time() << "] get output seq: "
+                << "ll: " << ll << ", ml: " << ml << ", offset: " << offset
+                << ", eoj: " << eoj << ", delim: " << delim
+                << ", overlap: " << overlap << std::endl;
+      
       // 处理 ll
       // 1.从 fileIOptr 中 probe ll 字节数据加入 checkBuffer 尾部
       // 2.推进 nextVerifyAddr

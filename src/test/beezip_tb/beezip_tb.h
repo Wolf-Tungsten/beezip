@@ -2,6 +2,8 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <csignal>
+#include <atomic>
 
 #include "Vbeezip.h"
 #include "beezip_file_io.h"
@@ -27,6 +29,8 @@ class BeeZipTestbench {
                   const std::string& inputFilePath, int hqt, bool enableHashCheck);
   ~BeeZipTestbench();
   void run();
+  static std::atomic<bool> interruptSimulation;
+  static void signalHandler(int signal);
 
  private:
   std::unique_ptr<VerilatedVcdC> tfp;

@@ -337,7 +337,7 @@ module match_engine (
     genvar spbn_idx; // seq packet bus node
     generate
         for (spbn_idx = 0; spbn_idx < `NUM_JOB_PE; spbn_idx = spbn_idx + 1) begin: spbn_node_gen
-            seq_packet_bus_node #(.FIRST(spbn_idx == 0)) spbn_inst (
+            seq_packet_bus_node #(.FIRST(spbn_idx == 0), .SPBN_IDX(spbn_idx)) spbn_inst (
                 .clk(clk),
                 .rst_n(hbbn_spbn_rst_n_p1_reg[spbn_idx >> 2]),
                 .i_token_valid(seq_packet_bus_i_token_valid[spbn_idx]),

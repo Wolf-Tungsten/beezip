@@ -496,14 +496,16 @@ module hash_pe_array(
                 always @(posedge clk) begin
                     if(p_rst_n) begin
                         if(meta_mask_buffer_output_valid && meta_mask_buffer_output_ready) begin
-                            $display("[hash_pe_array @ %0t] row=%0d, col=%0d, addr=%0d, history_addr=%0d, compare_bitmask=%b, match_len=%0d, can_ext=%0d", 
-                            $time,
-                            g_row, g_col, 
-                            meta_mask_buffer_output_addr_vec[g_row* `ADDR_WIDTH +: `ADDR_WIDTH],
-                            meta_mask_buffer_output_history_addr_vec[(g_row*`ROW_SIZE + g_col)*`ADDR_WIDTH +: `ADDR_WIDTH],
-                            meta_mask_buffer_output_meta_history_mask_vec[(g_row*`ROW_SIZE + g_col)*`META_HISTORY_LEN +: `META_HISTORY_LEN], 
-                            meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH], 
-                            meta_match_can_ext_vec[g_row*`ROW_SIZE + g_col]);
+                            if(meta_mask_buffer_mask[g_row]) begin
+                                $display("[hash_pe_array @ %0t] row=%0d, col=%0d, head_addr=%0d, history_addr=%0d, compare_bitmask=%b, match_len=%0d, can_ext=%0d", 
+                                $time,
+                                g_row, g_col, 
+                                meta_mask_buffer_output_addr_vec[g_row* `ADDR_WIDTH +: `ADDR_WIDTH],
+                                meta_mask_buffer_output_history_addr_vec[(g_row*`ROW_SIZE + g_col)*`ADDR_WIDTH +: `ADDR_WIDTH],
+                                meta_mask_buffer_output_meta_history_mask_vec[(g_row*`ROW_SIZE + g_col)*`META_HISTORY_LEN +: `META_HISTORY_LEN], 
+                                meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH], 
+                                meta_match_can_ext_vec[g_row*`ROW_SIZE + g_col]);
+                            end
                         end
                     end
                 end

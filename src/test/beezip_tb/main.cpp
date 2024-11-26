@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main(int argc, char **argv)
-{
+{  
     auto contextp = std::make_unique<VerilatedContext>();
     contextp->commandArgs(argc, argv);
     std::string inputFilePath = contextp->commandArgsPlusMatch("inputFilePath");
