@@ -43,7 +43,9 @@ class BeeZipTestbench {
 
   bool inputEof;
   bool outputEof;
+  int nextHashHeadAddr;
   int nextVerifyAddr;
+  int jobHeadAddr;
   std::vector<unsigned char> checkBuffer;
   void serveInput();
   void serveOutput();

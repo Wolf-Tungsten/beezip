@@ -81,7 +81,9 @@ void BeeZipTestbench::run() {
   dut->rst_n = !1;
   inputEof = false;
   outputEof = false;
+  nextHashHeadAddr = 0;
   nextVerifyAddr = 0;
+  jobHeadAddr = 0;
   dut->i_valid = 0;
   dut->o_seq_packet_ready = 0;
   dut->cfg_max_queued_req_num = hqt;
@@ -153,6 +155,10 @@ void BeeZipTestbench::serveOutput() {
 
 void BeeZipTestbench::checkHashResult() {
   int headAddr = dut->dbg_hash_engine_o_head_addr;
+  if(headAddr != nextHashHeadAddr) {
+    throw std::runtime_error("hash result not continuous");
+  }
+  nextHashHeadAddr += HASH_ISSUE_WIDTH;
   bool delim = dut->dbg_hash_engine_o_delim;
   if (delim) {
     if ((headAddr + HASH_ISSUE_WIDTH) % BLOCK_LEN != 0) {
@@ -203,9 +209,12 @@ void BeeZipTestbench::checkAndWriteSeq() {
       bool delim = portBit(dut->o_seq_packet_delim, i);
       int overlap = portSeg32(dut->o_seq_packet_overlap, SEQ_ML_BITS, i);
       std::cout << "[testbench @ " << contextp->time() << "] get output seq: "
-                << "ll: " << ll << ", ml: " << ml << ", offset: " << offset
-                << ", eoj: " << eoj << ", delim: " << delim
-                << ", overlap: " << overlap << std::endl;
+                << "job_head_addr=" << jobHeadAddr 
+                << ", nextVerifyAddr=" << nextVerifyAddr
+                << ", head_addr=" << nextVerifyAddr + ll
+                << ", ll=" << ll << ", ml=" << ml << ", offset=" << offset
+                << ", eoj=" << eoj << ", delim=" << delim
+                << ", overlap=" << overlap << std::endl;
       
       // 处理 ll
       // 1.从 fileIOptr 中 probe ll 字节数据加入 checkBuffer 尾部
@@ -234,6 +243,9 @@ void BeeZipTestbench::checkAndWriteSeq() {
         nextVerifyAddr -= overlap;
       }
       // 写出 seq
+      if (eoj) {
+        jobHeadAddr = nextVerifyAddr;
+      }
       fileIOptr->writeSeq(ll, ml, offset, eoj, delim, overlap);
     }
   }

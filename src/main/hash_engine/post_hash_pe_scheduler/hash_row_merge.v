@@ -28,154 +28,204 @@ module hash_row_merge (
 );
 
   localparam LAYER = $clog2(`ROW_SIZE) + 1;
-  localparam TREE_SIZE = 2 ** LAYER - 1;
-  localparam LEAF_SIZE = 2 ** (LAYER - 1);
+  localparam ROW_SIZE_UP = 2 ** $clog2(`ROW_SIZE);
 
-  /**
-  在 hash row 内部进行合并
-  1. 为了支持不是 2 的幂次方的 ROW_SIZE，叶节点数量是 2 的幂次方，多余的叶节点 valid 为 0
-  2. 叶节点数量 = 2**($clog2(ROW_SIZE))
-  3. 树的深度 = $clog2(ROW_SIZE) + 1
-  */
+  /* verilator lint_off UNOPTFLAT */
+  wire layer_i_valid[LAYER-1:0];
+  wire layer_o_valid[LAYER-1:0];
+  wire layer_i_ready[LAYER-1:0];
+  wire layer_o_ready[LAYER-1:0];
+  wire [`NUM_HASH_PE-1:0] layer_i_mask[LAYER-1:0];
+  wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] layer_i_addr[LAYER-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP-1:0] layer_i_history_valid[LAYER-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP*`ADDR_WIDTH-1:0] layer_i_history_addr[LAYER-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP*`META_MATCH_LEN_WIDTH-1:0] layer_i_meta_match_len[LAYER-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP-1:0] layer_i_meta_match_can_ext[LAYER-1:0];
+  wire [`NUM_HASH_PE-1:0] layer_i_delim[LAYER-1:0];
+  wire [`HASH_ISSUE_WIDTH*8-1:0] layer_i_data[LAYER-1:0];
+  wire [`NUM_HASH_PE-1:0] layer_o_mask[LAYER-1-1:0];
+  wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] layer_o_addr[LAYER-1-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP-1:0] layer_o_history_valid[LAYER-1-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP*`ADDR_WIDTH-1:0] layer_o_history_addr[LAYER-1-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP*`META_MATCH_LEN_WIDTH-1:0] layer_o_meta_match_len[LAYER-1-1:0];
+  wire [`NUM_HASH_PE*ROW_SIZE_UP-1:0] layer_o_meta_match_can_ext[LAYER-1-1:0];
+  wire [`NUM_HASH_PE-1:0] layer_o_delim[LAYER-1-1:0];
+  wire [`HASH_ISSUE_WIDTH*8-1:0] layer_o_data[LAYER-1-1:0];
+  /* verilator lint_on UNOPTFLAT */
 
-  reg fire_reg [LAYER];
-  reg ready_reg[LAYER];
-  localparam BYPASS_W = $bits({input_mask, input_addr_vec, input_delim_vec, input_data});
-  reg [BYPASS_W-1:0] mask_addr_delim_data_reg[LAYER];
-  assign input_ready = ready_reg[0];
-  integer layer_idx;
-  always @(posedge clk) begin
-    if (~rst_n) begin
-      for (layer_idx = 0; layer_idx < LAYER; layer_idx = layer_idx + 1) begin
-        fire_reg[layer_idx]  <= 1'b0;
-        ready_reg[layer_idx] <= 1'b0;
-      end
-    end else begin
-      fire_reg[0] <= input_valid && input_ready;
-      ready_reg[LAYER-1] <= output_ready;
-      mask_addr_delim_data_reg[0] <= {input_mask, input_addr_vec, input_delim_vec, input_data};
-      for (layer_idx = 1; layer_idx < LAYER; layer_idx = layer_idx + 1) begin
-        fire_reg[layer_idx] <= fire_reg[layer_idx-1];
-        mask_addr_delim_data_reg[layer_idx] <= mask_addr_delim_data_reg[layer_idx-1];
-        ready_reg[layer_idx-1] <= ready_reg[layer_idx];
+  genvar g_l;
+  generate
+    for(g_l = 0; g_l < LAYER; g_l = g_l + 1) begin
+      if(g_l == 0) begin
+        // 第一层输入接入到输入端口
+        assign layer_i_valid[g_l] = input_valid;
+        assign layer_i_mask[g_l] = input_mask;
+        assign layer_i_addr[g_l] = input_addr_vec;
+        assign layer_i_history_valid[g_l] = input_history_valid_vec;
+        assign layer_i_history_addr[g_l] = input_history_addr_vec;
+        assign layer_i_meta_match_len[g_l] = input_meta_match_len_vec;
+        assign layer_i_meta_match_can_ext[g_l] = input_meta_match_can_ext_vec;
+        assign layer_i_delim[g_l] = input_delim_vec;
+        assign layer_i_data[g_l] = input_data;
+        assign input_ready = layer_o_ready[g_l];
+        // 第一层的 layer_i 直通到 layer_o
+        assign layer_o_valid[g_l] = layer_i_valid[g_l];
+        assign layer_o_mask[g_l] = layer_i_mask[g_l];
+        assign layer_o_addr[g_l] = layer_i_addr[g_l];
+        assign layer_o_history_valid[g_l] = layer_i_history_valid[g_l];
+        assign layer_o_history_addr[g_l] = layer_i_history_addr[g_l];
+        assign layer_o_meta_match_len[g_l] = layer_i_meta_match_len[g_l];
+        assign layer_o_meta_match_can_ext[g_l] = layer_i_meta_match_can_ext[g_l];
+        assign layer_o_delim[g_l] = layer_i_delim[g_l];
+        assign layer_o_data[g_l] = layer_i_data[g_l];
+        assign layer_i_ready[g_l] = layer_o_ready[g_l];        
+      end else if (g_l == LAYER - 1) begin
+        // 最后一层的输入接入到 pingpong_reg 再连接到模块输出
+        pingpong_reg #(.W($bits({output_mask, output_addr, output_history_valid, output_history_addr, output_meta_match_len, output_meta_match_can_ext, output_delim, output_data}))) pingpong_reg_inst (
+            .clk(clk),
+            .rst_n(rst_n),
+            .input_valid(layer_i_valid[g_l]),
+            .input_payload({
+              layer_i_mask[g_l],
+              layer_i_addr[g_l],
+              layer_i_history_valid[g_l][`NUM_HASH_PE-1:0],
+              layer_i_history_addr[g_l][`NUM_HASH_PE*`ADDR_WIDTH-1:0],
+              layer_i_meta_match_len[g_l][`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0],
+              layer_i_meta_match_can_ext[g_l][`NUM_HASH_PE-1:0],
+              layer_i_delim[g_l],
+              layer_i_data[g_l]
+            }),
+            .input_ready(layer_i_ready[g_l]),
+            .output_valid(output_valid),
+            .output_payload({
+              output_mask,
+              output_addr,
+              output_history_valid,
+              output_history_addr,
+              output_meta_match_len,
+              output_meta_match_can_ext,
+              output_delim,
+              output_data
+            }),
+            .output_ready(output_ready)
+        );
+      end else begin
+        // 输入通过 forward reg 连接到输出
+        localparam LAYER_ROW_SIZE = ROW_SIZE_UP / (2 ** g_l);
+        forward_reg #(.W(`NUM_HASH_PE * (1 + `ADDR_WIDTH + 1) + `NUM_HASH_PE * LAYER_ROW_SIZE * (1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1) + `HASH_ISSUE_WIDTH * 8)) forward_reg_inst (
+            .clk(clk),
+            .rst_n(rst_n),
+            .input_valid(layer_i_valid[g_l]),
+            .input_payload({
+              layer_i_mask[g_l],
+              layer_i_addr[g_l],
+              layer_i_history_valid[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE-1:0],
+              layer_i_history_addr[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE*`ADDR_WIDTH-1:0],
+              layer_i_meta_match_len[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0],
+              layer_i_meta_match_can_ext[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE-1:0],
+              layer_i_delim[g_l],
+              layer_i_data[g_l]
+            }),
+            .input_ready(layer_i_ready[g_l]),
+            .output_valid(layer_o_valid[g_l]),
+            .output_payload({
+              layer_o_mask[g_l],
+              layer_o_addr[g_l],
+              layer_o_history_valid[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE-1:0],
+              layer_o_history_addr[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE*`ADDR_WIDTH-1:0],
+              layer_o_meta_match_len[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0],
+              layer_o_meta_match_can_ext[g_l][`NUM_HASH_PE*LAYER_ROW_SIZE-1:0],
+              layer_o_delim[g_l],
+              layer_o_data[g_l]
+            }),
+            .output_ready(layer_o_ready[g_l])
+        );
       end
     end
-  end
+  endgenerate
 
-  reg [`NUM_HASH_PE*TREE_SIZE-1:0] history_valid_reg;
-  reg [`NUM_HASH_PE*TREE_SIZE*`ADDR_WIDTH-1:0] history_addr_reg;
-  reg [`NUM_HASH_PE*TREE_SIZE*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_reg;
-  reg [`NUM_HASH_PE*TREE_SIZE-1:0] meta_match_can_ext_reg;
-
-  task automatic update_parent;
-    input integer pe_idx;
-    input integer parent_idx;
-    input integer child_idx;
-    begin
-      history_valid_reg[pe_idx*TREE_SIZE+parent_idx] <= 1'b1;
-      history_addr_reg[(pe_idx*TREE_SIZE + parent_idx) * `ADDR_WIDTH +: `ADDR_WIDTH] <= history_addr_reg[(pe_idx*TREE_SIZE + child_idx) * `ADDR_WIDTH +: `ADDR_WIDTH];
-      meta_match_len_reg[(pe_idx*TREE_SIZE + parent_idx) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] <= meta_match_len_reg[(pe_idx*TREE_SIZE + child_idx) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH];
-      meta_match_can_ext_reg[pe_idx*TREE_SIZE + parent_idx] <= meta_match_can_ext_reg[pe_idx*TREE_SIZE + child_idx];
-    end
-  endtask
-
-  integer pe_idx, i, leaf_idx, l_idx, r_idx;
-  always @(posedge clk) begin
-    history_valid_reg <= meta_match_can_ext_reg;
-    for (pe_idx = 0; pe_idx < `NUM_HASH_PE; pe_idx = pe_idx + 1) begin
-      // 输入连接到叶子结点，如果 ROW_SIZE 不是 2 的幂次方，多余的叶节点 valid 为 0
-      for (i = 0; i < LEAF_SIZE; i = i + 1) begin
-        if (i < `ROW_SIZE) begin
-          history_valid_reg[(pe_idx * TREE_SIZE + i + LEAF_SIZE - 1)] <= input_history_valid_vec[pe_idx*`ROW_SIZE+i];
-          history_addr_reg[(pe_idx * TREE_SIZE + i + LEAF_SIZE - 1) * `ADDR_WIDTH +: `ADDR_WIDTH] <= input_history_addr_vec[pe_idx * `ROW_SIZE * `ADDR_WIDTH + i * `ADDR_WIDTH +: `ADDR_WIDTH];
-          meta_match_len_reg[(pe_idx * TREE_SIZE + i + LEAF_SIZE - 1) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] <= input_meta_match_len_vec[pe_idx * `ROW_SIZE * `META_MATCH_LEN_WIDTH + i * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH];
-          meta_match_can_ext_reg[(pe_idx * TREE_SIZE + i + LEAF_SIZE - 1)] <= input_meta_match_can_ext_vec[pe_idx * `ROW_SIZE + i];
-        end else begin
-          history_valid_reg[(pe_idx*TREE_SIZE+i+LEAF_SIZE-1)] <= 1'b0;
-        end
-      end
-      /* 树内部的选择逻辑
-        1.两个叶节点都无效，父节点无效
-        2.只有一个叶节点有效，父节点选择有效的叶节点
-        3.两个叶节点都有效，父节点优先选择更长的，如果一样长则选择history_addr更大的
-        */
-      for (i = 0; i < LEAF_SIZE - 1; i = i + 1) begin
-        l_idx = i * 2 + 1;
-        r_idx = i * 2 + 2;
-        if (history_valid_reg[pe_idx * TREE_SIZE + l_idx] && history_valid_reg[pe_idx * TREE_SIZE + r_idx]) begin
-          if (meta_match_len_reg[(pe_idx * TREE_SIZE + l_idx) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] == meta_match_len_reg[(pe_idx * TREE_SIZE + r_idx) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH]) begin
-            if (history_addr_reg[(pe_idx * TREE_SIZE + l_idx) * `ADDR_WIDTH +: `ADDR_WIDTH] > history_addr_reg[(pe_idx * TREE_SIZE + r_idx) * `ADDR_WIDTH +: `ADDR_WIDTH]) begin
-              update_parent(pe_idx, i, l_idx);
+  // 层次之间的二叉树合并
+  genvar g_i, g_j;
+  generate
+    for(g_l = 1; g_l < LAYER; g_l = g_l + 1) begin
+      assign layer_i_valid[g_l] = layer_o_valid[g_l-1];
+      assign layer_i_mask[g_l] = layer_o_mask[g_l-1];
+      assign layer_i_addr[g_l] = layer_o_addr[g_l-1];
+      assign layer_i_delim[g_l] = layer_o_delim[g_l-1];
+      assign layer_i_data[g_l] = layer_o_data[g_l-1];
+      assign layer_o_ready[g_l-1] = layer_i_ready[g_l];
+      localparam PREV_LAYER_ROW_SIZE = ROW_SIZE_UP / (2 ** (g_l-1));
+      localparam LAYER_ROW_SIZE = ROW_SIZE_UP / (2 ** g_l);
+      for(g_i = 0; g_i < `NUM_HASH_PE; g_i = g_i + 1) begin
+        wire [PREV_LAYER_ROW_SIZE-1:0] prev_layer_history_valid = layer_o_history_valid[g_l-1][g_i*PREV_LAYER_ROW_SIZE +: PREV_LAYER_ROW_SIZE];
+        wire [PREV_LAYER_ROW_SIZE*`ADDR_WIDTH-1:0] prev_layer_history_addr = layer_o_history_addr[g_l-1][g_i*PREV_LAYER_ROW_SIZE*`ADDR_WIDTH +: PREV_LAYER_ROW_SIZE*`ADDR_WIDTH];
+        wire [PREV_LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] prev_layer_meta_match_len = layer_o_meta_match_len[g_l-1][g_i*PREV_LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH +: PREV_LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH];
+        wire [PREV_LAYER_ROW_SIZE-1:0] prev_layer_meta_match_can_ext = layer_o_meta_match_can_ext[g_l-1][g_i*PREV_LAYER_ROW_SIZE +: PREV_LAYER_ROW_SIZE];
+        wire [LAYER_ROW_SIZE-1:0] layer_history_valid;
+        wire [LAYER_ROW_SIZE*`ADDR_WIDTH-1:0] layer_history_addr;
+        wire [LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] layer_meta_match_len;
+        wire [LAYER_ROW_SIZE-1:0] layer_meta_match_can_ext;
+        assign layer_i_history_valid[g_l][g_i*LAYER_ROW_SIZE +: LAYER_ROW_SIZE] = layer_history_valid;
+        assign layer_i_history_addr[g_l][g_i*LAYER_ROW_SIZE*`ADDR_WIDTH +: LAYER_ROW_SIZE*`ADDR_WIDTH] = layer_history_addr;
+        assign layer_i_meta_match_len[g_l][g_i*LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH +: LAYER_ROW_SIZE*`META_MATCH_LEN_WIDTH] = layer_meta_match_len;
+        assign layer_i_meta_match_can_ext[g_l][g_i*LAYER_ROW_SIZE +: LAYER_ROW_SIZE] = layer_meta_match_can_ext;
+        for(g_j = 0; g_j < LAYER_ROW_SIZE; g_j = g_j + 1) begin
+          wire child_l_history_valid = prev_layer_history_valid[g_j*2];
+          wire child_r_history_valid = prev_layer_history_valid[g_j*2+1];
+          wire [`ADDR_WIDTH-1:0] child_l_history_addr = prev_layer_history_addr[g_j*2*`ADDR_WIDTH +: `ADDR_WIDTH];
+          wire [`ADDR_WIDTH-1:0] child_r_history_addr = prev_layer_history_addr[(g_j*2+1)*`ADDR_WIDTH +: `ADDR_WIDTH];
+          wire [`META_MATCH_LEN_WIDTH-1:0] child_l_meta_match_len = prev_layer_meta_match_len[g_j*2*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH];
+          wire [`META_MATCH_LEN_WIDTH-1:0] child_r_meta_match_len = prev_layer_meta_match_len[(g_j*2+1)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH];
+          wire child_l_meta_match_can_ext = prev_layer_meta_match_can_ext[g_j*2];
+          wire child_r_meta_match_can_ext = prev_layer_meta_match_can_ext[g_j*2+1];
+          reg parent_history_valid;
+          reg [`ADDR_WIDTH-1:0] parent_history_addr;
+          reg [`META_MATCH_LEN_WIDTH-1:0] parent_meta_match_len;
+          reg parent_meta_match_can_ext;
+          assign layer_history_valid[g_j] = parent_history_valid;
+          assign layer_history_addr[g_j*`ADDR_WIDTH +: `ADDR_WIDTH] = parent_history_addr;
+          assign layer_meta_match_len[g_j*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] = parent_meta_match_len;
+          assign layer_meta_match_can_ext[g_j] = parent_meta_match_can_ext;
+          always @(*) begin
+            parent_history_valid = child_l_history_valid | child_r_history_valid;
+            if (child_l_history_valid && child_r_history_valid) begin
+              if (child_l_meta_match_len == child_r_meta_match_len) begin
+                if (child_l_history_addr > child_r_history_addr) begin
+                  parent_history_addr = child_l_history_addr;
+                  parent_meta_match_len = child_l_meta_match_len;
+                  parent_meta_match_can_ext = child_l_meta_match_can_ext;
+                end else begin
+                  parent_history_addr = child_r_history_addr;
+                  parent_meta_match_len = child_r_meta_match_len;
+                  parent_meta_match_can_ext = child_r_meta_match_can_ext;
+                end
+              end else if (child_l_meta_match_len > child_r_meta_match_len) begin
+                parent_history_addr = child_l_history_addr;
+                parent_meta_match_len = child_l_meta_match_len;
+                parent_meta_match_can_ext = child_l_meta_match_can_ext;
+              end else begin
+                parent_history_addr = child_r_history_addr;
+                parent_meta_match_len = child_r_meta_match_len;
+                parent_meta_match_can_ext = child_r_meta_match_can_ext;
+              end
+            end else if (child_l_history_valid) begin
+              parent_history_addr = child_l_history_addr;
+              parent_meta_match_len = child_l_meta_match_len;
+              parent_meta_match_can_ext = child_l_meta_match_can_ext;
+            end else if (child_r_history_valid) begin
+              parent_history_addr = child_r_history_addr;
+              parent_meta_match_len = child_r_meta_match_len;
+              parent_meta_match_can_ext = child_r_meta_match_can_ext;
             end else begin
-              update_parent(pe_idx, i, r_idx);
+              parent_history_addr = '0;
+              parent_meta_match_len = '0;
+              parent_meta_match_can_ext = 1'b0;
             end
-          end else if (meta_match_len_reg[(pe_idx * TREE_SIZE + l_idx) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] > meta_match_len_reg[(pe_idx * TREE_SIZE + r_idx) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH]) begin
-            update_parent(pe_idx, i, l_idx);
-          end else begin
-            update_parent(pe_idx, i, r_idx);
           end
-        end else if (history_valid_reg[pe_idx*TREE_SIZE+l_idx]) begin
-          update_parent(pe_idx, i, l_idx);
-        end else if (history_valid_reg[pe_idx*TREE_SIZE+r_idx]) begin
-          update_parent(pe_idx, i, r_idx);
-        end else begin
-          history_valid_reg[pe_idx*TREE_SIZE+i] <= 1'b0;
         end
       end
     end
-  end
-
-  wire fifo_i_ready_tileoff;
-  reg [`NUM_HASH_PE-1:0] fifo_i_mask;
-  reg [`NUM_HASH_PE*`ADDR_WIDTH-1:0] fifo_i_addr;
-  reg [`NUM_HASH_PE-1:0] fifo_i_history_valid;
-  reg [`NUM_HASH_PE*`ADDR_WIDTH-1:0] fifo_i_history_addr;
-  reg [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] fifo_i_meta_match_len;
-  reg [`NUM_HASH_PE-1:0] fifo_i_meta_match_can_ext;
-  reg [`NUM_HASH_PE-1:0] fifo_i_delim;
-  reg [`HASH_ISSUE_WIDTH*8-1:0] fifo_i_data;
-
-  always @(*) begin
-    {fifo_i_mask, fifo_i_addr, fifo_i_delim, fifo_i_data} = mask_addr_delim_data_reg[LAYER-1];
-    for (pe_idx = 0; pe_idx < `NUM_HASH_PE; pe_idx = pe_idx + 1) begin
-      fifo_i_history_valid[pe_idx] = history_valid_reg[pe_idx*TREE_SIZE+0];
-      fifo_i_history_addr[pe_idx*`ADDR_WIDTH+:`ADDR_WIDTH] = history_addr_reg[(pe_idx * TREE_SIZE + 0) * `ADDR_WIDTH +: `ADDR_WIDTH];
-      fifo_i_meta_match_len[pe_idx*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] = meta_match_len_reg[(pe_idx * TREE_SIZE + 0) * `META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH];
-      fifo_i_meta_match_can_ext[pe_idx] = meta_match_can_ext_reg[pe_idx*TREE_SIZE+0];
-    end
-  end
-
-  fifo #(
-      .W(BYPASS_W + `NUM_HASH_PE * (1 + `ADDR_WIDTH + `META_MATCH_LEN_WIDTH + 1)),
-      .DEPTH(LAYER + 1)
-  ) fifo_inst (
-      .clk(clk),
-      .rst_n(rst_n),
-      .input_valid(fire_reg[LAYER-1]),
-      .input_payload({
-        fifo_i_mask,
-        fifo_i_addr,
-        fifo_i_history_valid,
-        fifo_i_history_addr,
-        fifo_i_meta_match_len,
-        fifo_i_meta_match_can_ext,
-        fifo_i_delim,
-        fifo_i_data
-      }),
-      .input_ready(fifo_i_ready_tileoff),
-      .output_valid(output_valid),
-      .output_payload({
-        output_mask,
-        output_addr,
-        output_history_valid,
-        output_history_addr,
-        output_meta_match_len,
-        output_meta_match_can_ext,
-        output_delim,
-        output_data
-      }),
-      .output_ready(output_ready)
-  );
+  endgenerate
 
 
 endmodule

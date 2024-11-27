@@ -77,6 +77,7 @@ module match_resp_sync #(
                  ~req_group_strb);
 `endif
         done_reg <= ~req_group_strb;
+        match_len_reg <= '0;
       end else if (|(resp_ready & resp_valid)) begin
         done_reg <= done_reg | valid_vec;
         match_len_reg <= match_len_reg | match_len_vec;

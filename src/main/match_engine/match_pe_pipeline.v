@@ -2,7 +2,9 @@
 `include "util.vh"
 `include "log.vh"
 
-module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LOG2=15) (
+module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LOG2=15, LABEL = "local_match_pe",
+          JOB_PE_IDX = 0,
+          MATCH_PE_IDX = 0) (
     input wire clk,
     input wire rst_n,
 
@@ -64,12 +66,10 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
         .q({dbg_valid, dbg_head_addr, dbg_history_addr})
     );
     always @(posedge clk) begin
-        if (i_write_enable) begin
-            $display("[match_pe_pipeline @ %0t] write write_addr=%0d, write_data=0x%0h", $time, i_write_addr, i_write_data);
-        end
         if (dbg_valid) begin
-            $display("[match_pe_pipeline @ %0t] read head_addr=%0d, head_data=0x%0h,  history_addr=%0d, history_data=0x%0h",
-                $time, dbg_head_addr, head_buf_read_data,
+            $display("[match_pe_pipeline @ %0t] in job_pe %0d, %s %0d  read head_addr=%0d, head_data=0x%0h,  history_addr=%0d, history_data=0x%0h",
+                $time, JOB_PE_IDX, LABEL, MATCH_PE_IDX,
+                dbg_head_addr, head_buf_read_data,
                 dbg_history_addr, hist_buf_read_data);
         end
     end

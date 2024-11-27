@@ -124,7 +124,10 @@ module match_pe #(
   match_pe_pipeline #(
       .SCOREBOARD_ENTRY_INDEX(SCOREBOARD_ENTRY_INDEX),
       .NBPIPE(3),
-      .SIZE_LOG2(SIZE_LOG2)
+      .SIZE_LOG2(SIZE_LOG2),
+      .LABEL(LABEL),
+      .JOB_PE_IDX(JOB_PE_IDX),
+      .MATCH_PE_IDX(MATCH_PE_IDX)
   ) pipeline (
       .clk  (clk),
       .rst_n(rst_n),

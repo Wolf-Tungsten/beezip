@@ -158,7 +158,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
 
   always @(posedge clk) begin
     if(state_reg == S_SEEK_MATCH_HEAD && job_tbl_history_valid_reg[match_head_ptr_reg]) begin
-      $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load match_head=%d into lazy tbl", JOB_PE_IDX, $time, match_head_ptr_reg);
+      $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load job_head_addr=%0d, match_head=%0d, head_addr=%0d into lazy tbl", JOB_PE_IDX, $time, job_head_addr_reg, match_head_ptr_reg, job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_reg, `ADDR_WIDTH));
       for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
         if({1'b0, match_head_ptr_reg} + i[`JOB_LEN_LOG2+1-1:0] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)];
@@ -170,7 +170,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
           `VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS) <= `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS);
           // lazy_table 中的 match_len 初始值就是 meta history 的匹配长度
           `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH);
-          $display("[job_pe @ %0t] S_SEEK_MATCH_HEAD lazy_tbl[%0d] valid=%b, pending=%b, head_addr=%d, history_addr=%d, offset=%d, match_len=%d", $time, i, 
+          $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load lazy_tbl[%0d] valid=%b, pending=%b, next_head_addr=%0d, next_history_addr=%0d, offset=%0d, match_len=%0d", JOB_PE_IDX, $time, i, 
           job_tbl_history_valid_reg[match_head_relative_idx(i)], 
           job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)], 
           job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN, 
@@ -282,12 +282,12 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         S_SEEK_MATCH_HEAD: begin
           if (job_tbl_history_valid_reg[match_head_ptr_reg]) begin
             `ifdef JOB_PE_DEBUG_LOG
-              $display("[job_pe %0d @ %0t] turn to S_LAZY_MATCH_REQ, seq_head_ptr=%0d, match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+              $display("[job_pe %0d @ %0t] turn to S_LAZY_MATCH_REQ, seq_head_ptr=%0d, match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, job_head_addr_reg);
             `endif
             state_reg <= S_LAZY_MATCH_REQ;
           end else if (match_head_ptr_reg == `JOB_LEN - 1) begin
             `ifdef JOB_PE_DEBUG_LOG
-              $display("[job_pe %0d @ %0t] turn to S_LIT_TAIL, seq_head_ptr=%0d, match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+              $display("[job_pe %0d @ %0t] turn to S_LIT_TAIL, seq_head_ptr=%0d, match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, job_head_addr_reg);
             `endif
             state_reg <= S_LIT_TAIL;
           end
@@ -295,12 +295,12 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         S_LAZY_MATCH_REQ: begin
           if (((|lazy_tbl_pending_reg) && match_req_group_ready)) begin
             `ifdef JOB_PE_DEBUG_LOG
-              $display("[job_pe %0d @ %0t] turn to S_LAZY_MATCH_RESP, seq_head_ptr=%0d, match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+              $display("[job_pe %0d @ %0t] turn to S_LAZY_MATCH_RESP, seq_head_ptr=%0d, match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, job_head_addr_reg);
             `endif
             state_reg <= S_LAZY_MATCH_RESP;
           end else if (~(|lazy_tbl_pending_reg)) begin
             `ifdef JOB_PE_DEBUG_LOG
-              $display("[job_pe %0d @ %0t] no pending, turn to S_LAZY_SUMMARY, seq_head_ptr=%0d, match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+              $display("[job_pe %0d @ %0t] no pending, turn to S_LAZY_SUMMARY, seq_head_ptr=%0d, match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, job_head_addr_reg);
             `endif
             state_reg <= S_LAZY_SUMMARY;
           end
@@ -308,7 +308,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         S_LAZY_MATCH_RESP: begin
           if (match_resp_group_valid) begin
             `ifdef JOB_PE_DEBUG_LOG
-              $display("[job_pe %0d @ %0t] got match resp group, turn to S_LAZY_SUMMARY, seq_head_ptr=%0d, match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+              $display("[job_pe %0d @ %0t] got match resp group, turn to S_LAZY_SUMMARY, seq_head_ptr=%0d, match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, job_head_addr_reg);
             `endif
             state_reg <= S_LAZY_SUMMARY;
           end
@@ -322,7 +322,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
               state_reg <= S_LOAD;
             end else begin
               `ifdef JOB_PE_DEBUG_LOG
-                $display("[job_pe %0d @ %0t] continue this job, turn to S_SEEK_MATCH_HEAD, seq_head_ptr=%0d[+%0d], match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, move_forward, match_head_ptr_reg);
+                $display("[job_pe %0d @ %0t] continue this job, turn to S_SEEK_MATCH_HEAD, seq_head_ptr=%0d[+%0d], match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, move_forward, match_head_ptr_reg, job_head_addr_reg);
               `endif
               state_reg <= S_SEEK_MATCH_HEAD;
             end
@@ -331,7 +331,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         S_LIT_TAIL: begin
           if (seq_valid && seq_ready) begin
             `ifdef JOB_PE_DEBUG_LOG
-              $display("[job_pe %0d @ %0t] send seq, turn to S_LOAD seq_head_ptr=%0d, match_head_ptr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
+              $display("[job_pe %0d @ %0t] send seq, turn to S_LOAD seq_head_ptr=%0d, match_head_ptr=%0d, job_head_addr=%0d", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg, job_head_addr_reg);
             `endif
             state_reg <= S_LOAD;
           end
