@@ -52,9 +52,9 @@ BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
   this->contextp = std::move(contextp);
   this->dut = std::move(dut);
   this->contextp->traceEverOn(true);
-  this->tfp = std::make_unique<VerilatedVcdC>();
+  this->tfp = std::make_unique<VerilatedFstC>();
   this->dut->trace(this->tfp.get(), 99);
-  this->tfp->open("beezip_tb.vcd");
+  this->tfp->open("beezip_tb.fst");
   this->fileIOptr =
       std::make_unique<BeeZipFileIO>(inputFilePath, JOB_LEN, HASH_ISSUE_WIDTH);
   this->hqt = hqt;

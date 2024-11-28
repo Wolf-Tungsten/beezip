@@ -7,7 +7,7 @@
 
 #include "Vbeezip.h"
 #include "beezip_file_io.h"
-#include "verilated_vcd_c.h"
+#include "verilated_fst_c.h"
 
 namespace beezip_tb {
 const int HASH_ISSUE_WIDTH = 32;
@@ -33,7 +33,7 @@ class BeeZipTestbench {
   static void signalHandler(int signal);
 
  private:
-  std::unique_ptr<VerilatedVcdC> tfp;
+  std::unique_ptr<VerilatedFstC> tfp;
   std::unique_ptr<VerilatedContext> contextp;
   std::unique_ptr<Vbeezip> dut;
 

@@ -526,7 +526,7 @@ module match_engine (
 
 `ifdef MATCH_ENGINE_DEBUG_LOG
   always @(posedge clk) begin
-    if (i_match_pe_write_enable) begin
+    if (i_match_pe_write_enable & i_hash_batch_ready) begin
       $display("[match_engine @ %0t] write write_addr=%0d, write_data=0x%0h", $time,
                i_match_pe_write_addr, i_match_pe_write_data);
     end
