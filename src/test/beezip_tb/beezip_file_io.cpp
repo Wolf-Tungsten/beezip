@@ -34,7 +34,9 @@ BeeZipFileIO::~BeeZipFileIO() { outputFile.close(); }
 std::pair<int, std::vector<unsigned char>> BeeZipFileIO::readData() {
   std::vector<unsigned char> dataSlice(buffer.begin() + headAddr,
                               buffer.begin() + headAddr + hashIssueWidth);
-  return std::make_pair(headAddr += hashIssueWidth, dataSlice);
+  auto res = std::make_pair(headAddr, dataSlice);
+  headAddr += hashIssueWidth;
+  return res;
 }
 
 unsigned char BeeZipFileIO::probeData(int addr) { return buffer[addr]; }

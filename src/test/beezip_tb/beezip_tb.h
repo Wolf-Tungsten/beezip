@@ -12,7 +12,7 @@
 namespace beezip_tb {
 const int HASH_ISSUE_WIDTH = 32;
 const int JOB_LEN = 64;
-const int BLOCK_LEN = 128 * 1024;
+const int BLOCK_LEN = 1024;
 const int ADDR_WIDTH = 23;
 const int META_MATCH_LEN_WIDTH = 5;
 const int META_HISTORY_LEN = 15;

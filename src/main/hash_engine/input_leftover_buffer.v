@@ -7,6 +7,7 @@ module input_leftover_buffer (
         input  wire input_valid,
         output wire input_ready,
         input  wire input_delim,
+        input wire [`ADDR_WIDTH-1:0] dbg_i_head_addr,
         input  wire [`HASH_ISSUE_WIDTH*8-1:0] input_data,
 
         output wire output_valid,
@@ -49,7 +50,7 @@ module input_leftover_buffer (
 
     assign input_ready = (state_reg == state_wait) || ((state_reg == state_output) && output_ready);
     assign output_valid = ((state_reg == state_output) && input_valid) || (state_reg == state_flush_delim);
-    assign output_delim = input_delim || (state_reg == state_flush_delim);
+    assign output_delim = (state_reg == state_flush_delim);
     assign output_data = {input_data[(`META_HISTORY_LEN-1)*8-1:0], data_reg};
     assign output_head_addr = head_addr_reg;
 

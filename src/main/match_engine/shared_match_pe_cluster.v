@@ -78,7 +78,10 @@ module shared_match_pe_cluster #(
 
   match_pe #(
       .TAG_BITS (`NUM_JOB_PE_LOG2 + `LAZY_LEN_LOG2),
-      .SIZE_LOG2(`WINDOW_LOG - `NUM_JOB_PE_LOG2)
+      .SIZE_LOG2(`WINDOW_LOG - `NUM_JOB_PE_LOG2),
+      .LABEL("shared_match_pe"),
+      .JOB_PE_IDX(`NUM_JOB_PE),
+      .MATCH_PE_IDX(SHARED_MATCH_PE_SLICE_IDX)
   ) match_pe_inst[`NUM_SHARED_MATCH_PE-1:0] (
       .clk  (clk),
       .rst_n(rst_n_reg),

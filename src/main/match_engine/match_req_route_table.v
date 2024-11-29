@@ -22,10 +22,12 @@ module match_req_route_table (
     generate
         for(i = 0; i < `LAZY_LEN; i = i + 1) begin: ROUTE_MAP_GEN
             for(j = 0; j < `NUM_MATCH_REQ_CH; j = j + 1) begin: CHANNEL_GEN
-                assign route_map[i*`NUM_MATCH_REQ_CH + j] = 
-                `VEC_SLICE(offset, i, `SEQ_OFFSET_BITS) >= channel_lower_bound[j] && 
-                `VEC_SLICE(offset, i, `SEQ_OFFSET_BITS) < channel_upper_bound[j];
+                // assign route_map[i*`NUM_MATCH_REQ_CH + j] = 
+                // `VEC_SLICE(offset, i, `SEQ_OFFSET_BITS) >= channel_lower_bound[j] && 
+                // `VEC_SLICE(offset, i, `SEQ_OFFSET_BITS) < channel_upper_bound[j];
             end
+            assign route_map[i*`NUM_MATCH_REQ_CH +: `NUM_MATCH_REQ_CH] = 4'b1000;
+            // enforce map to shared match pe to help debug
         end
     endgenerate
 endmodule

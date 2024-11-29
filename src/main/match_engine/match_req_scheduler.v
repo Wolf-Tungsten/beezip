@@ -191,7 +191,7 @@ module match_req_scheduler #(
         for(integer i = 0; i < `NUM_MATCH_REQ_CH; i = i + 1) begin
             if(match_req_valid[i] & match_req_ready[i]) begin
                 $display(
-                    "[match_req_scheduler %0d @ %0t] send request head_addr = %0d, history_addr = %0d, tag = %0d to request channel %0d",
+                    "[match_req_scheduler %0d @ %0t] send request head_addr=%0d, history_addr=%0d, tag=%0d to request channel %0d",
                     JOB_PE_IDX, $time, 
                     `VEC_SLICE(match_req_head_addr, i, `ADDR_WIDTH), 
                     `VEC_SLICE(match_req_history_addr, i, `ADDR_WIDTH),

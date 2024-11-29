@@ -11,6 +11,7 @@ module beezip (
     input  wire i_valid,
     output wire i_ready,
     input  wire i_delim,
+    input wire [`ADDR_WIDTH-1:0] dbg_i_head_addr,
     input  wire [`HASH_ISSUE_WIDTH*8-1:0] i_data,
 
     output wire o_seq_packet_valid,
@@ -55,6 +56,7 @@ module beezip (
         .i_data(i_data),
         .i_delim(i_delim),
         .i_ready(i_ready),
+        .dbg_i_head_addr(dbg_i_head_addr),
 
         .o_valid(hash_engine_o_valid),
         .o_ready(hash_engine_o_ready),

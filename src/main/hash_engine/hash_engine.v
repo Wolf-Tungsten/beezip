@@ -10,6 +10,7 @@ module hash_engine(
     input  wire i_valid,
     output wire i_ready,
     input  wire i_delim,
+    input wire [`ADDR_WIDTH-1:0] dbg_i_head_addr,
     input  wire [`HASH_ISSUE_WIDTH*8-1:0] i_data,
 
     output wire o_valid,
@@ -76,6 +77,7 @@ module hash_engine(
         .input_ready(i_ready),
         .input_delim(i_delim),
         .input_data (i_data),
+        .dbg_i_head_addr(dbg_i_head_addr),
 
         .output_valid(valid_between_buffer_compute),
         .output_ready(ready_between_buffer_compute),

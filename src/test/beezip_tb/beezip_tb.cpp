@@ -121,9 +121,15 @@ void BeeZipTestbench::run() {
 }
 
 void BeeZipTestbench::serveInput() {
+  dut->i_valid = 1;
   if (dut->i_ready) {
-    dut->i_valid = 1;
-    auto [nextAddr, data] = fileIOptr->readData();
+    auto readPair = fileIOptr->readData();
+    int nextAddr = readPair.first;
+    std::cout << "[testbench @ " << contextp->time() << "] input data"
+              << ", headAddr=" << nextAddr
+              << std::endl;
+    std::vector<unsigned char> data = readPair.second;
+    dut->dbg_i_head_addr = nextAddr;
     for (int i = 0; i < HASH_ISSUE_WIDTH / 4; i++) {
       dut->i_data[i] = ((uint32_t)data[i * 4]) |
                        (((uint32_t)data[i * 4 + 1]) << 8) |
@@ -131,6 +137,9 @@ void BeeZipTestbench::serveInput() {
                        (((uint32_t)data[i * 4 + 3]) << 24);
     }
     if ((nextAddr + HASH_ISSUE_WIDTH) % BLOCK_LEN == 0) {
+      std::cout << "[testbench @ " << contextp->time() << "] input delim"
+                << ", headAddr=" << nextAddr
+                << std::endl;
       dut->i_delim = 1;
     } else {
       dut->i_delim = 0;
@@ -138,8 +147,6 @@ void BeeZipTestbench::serveInput() {
     if (nextAddr + HASH_ISSUE_WIDTH >= fileIOptr->getFileSize()) {
       inputEof = true;
     }
-  } else {
-    dut->i_valid = 0;
   }
 }
 
@@ -162,6 +169,7 @@ void BeeZipTestbench::checkHashResult() {
   bool delim = dut->dbg_hash_engine_o_delim;
   if (delim) {
     if ((headAddr + HASH_ISSUE_WIDTH) % BLOCK_LEN != 0) {
+      std::cout << "headAddr: " << headAddr << std::endl;
       throw std::runtime_error("Delim not match");
     }
   }
