@@ -9,6 +9,8 @@ namespace beezip_tb {
         BeeZipFileIO(std::string inputFilePath, const int jobLen = 64, const int hashIssueWidth = 32);
         ~BeeZipFileIO();
         std::pair<int, std::vector<unsigned char>> readData();
+        void moveInputPtr();
+        int getHeadAddr();
         unsigned char probeData(int addr);
         void writeSeq(int ll, int ml, int offset, bool eoj, bool delim,
                             int overlap);

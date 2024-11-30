@@ -72,19 +72,17 @@ module post_hash_pe_scheduler (
       integer i;
       if(input_valid & input_ready) begin
         for (i = 0; i < `NUM_HASH_PE; i = i + 1) begin
-          if (input_mask[i]) begin
-            $display(
-                "[post_hash_pe_scheduler @ %0t] input head_addr=%0d, input_mask=%b",
-                $time, input_addr_vec[i*`ADDR_WIDTH+:`ADDR_WIDTH], input_mask[i]);
-          end
+          $display("[hash_row_merge @ %0t] input head_addr=%0d, mask=%b, history_valid=%b, delim=%0d",
+              $time, input_addr_vec[i*`ADDR_WIDTH+:`ADDR_WIDTH], input_mask[i], input_history_valid_vec[i*`ROW_SIZE+:`ROW_SIZE],
+              input_delim_vec[i]);
         end
       end
       if (merge_output_valid & merge_output_ready) begin
         for (i = 0; i < `NUM_HASH_PE; i = i + 1) begin
           if (merge_output_history_valid[i] | 1'b1) begin
             $display(
-                "[hash_row_merge @ %0t] output head_addr=%0d, history_valid=%0d, history_addr=%0d, meta_match_len=%0d, meta_match_can_ext=%0d, delim=%0d, data=%0d",
-                $time, merge_output_addr[i*`ADDR_WIDTH+:`ADDR_WIDTH], merge_output_history_valid[i],
+                "[hash_row_merge @ %0t] output head_addr=%0d, mask=%0d, history_valid=%0d, history_addr=%0d, meta_match_len=%0d, meta_match_can_ext=%0d, delim=%0d, data=%0d",
+                $time, merge_output_addr[i*`ADDR_WIDTH+:`ADDR_WIDTH], merge_output_mask[i], merge_output_history_valid[i],
                 merge_output_history_addr[i*`ADDR_WIDTH+:`ADDR_WIDTH],
                 merge_output_meta_match_len[i*`META_MATCH_LEN_WIDTH+:`META_MATCH_LEN_WIDTH],
                 merge_output_meta_match_can_ext[i], merge_output_delim[i],
