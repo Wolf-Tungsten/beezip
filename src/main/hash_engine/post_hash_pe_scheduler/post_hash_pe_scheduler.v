@@ -36,7 +36,7 @@ module post_hash_pe_scheduler (
   wire [`NUM_HASH_PE*`META_MATCH_LEN_WIDTH-1:0] merge_output_meta_match_len;
   wire [`NUM_HASH_PE-1:0] merge_output_meta_match_can_ext;
   wire [`NUM_HASH_PE-1:0] merge_output_delim;
-  wire [`NUM_HASH_PE*8-1:0] merge_output_data;
+  wire [`HASH_ISSUE_WIDTH*8-1:0] merge_output_data;
   wire merge_output_ready;
 
   hash_row_merge merge_inst (

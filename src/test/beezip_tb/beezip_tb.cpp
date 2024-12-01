@@ -54,7 +54,8 @@ BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
   this->contextp->traceEverOn(true);
   this->tfp = std::make_unique<VerilatedFstC>();
   this->dut->trace(this->tfp.get(), 99);
-  this->tfp->open("beezip_tb.fst");
+  std::string tracePath = inputFilePath + ".fst";
+  this->tfp->open(tracePath.c_str());
   this->fileIOptr =
       std::make_unique<BeeZipFileIO>(inputFilePath, JOB_LEN, HASH_ISSUE_WIDTH);
   this->hqt = hqt;
@@ -130,7 +131,7 @@ void BeeZipTestbench::run() {
     std::cout << "Simulation finished successfully!" << std::endl;
   }
   tfp->close();
-  fileIOptr->writeThroughput(fileIOptr->getFileSize(), contextp->time() / 2);
+  fileIOptr->writeThroughput(fileIOptr->getFileSize() + fileIOptr->getTailLL(), contextp->time() / 2);
 }
 
 void BeeZipTestbench::serveInput() {
@@ -257,12 +258,16 @@ void BeeZipTestbench::checkAndWriteSeq() {
       if (eoj) {
         jobHeadAddr = nextVerifyAddr;
       }
-      fileIOptr->writeSeq(ll, ml, offset, eoj, delim, overlap);
       // 判断是否到达文件末尾
       if (nextVerifyAddr >= fileIOptr->getFileSize()) {
+        ll += fileIOptr->getTailLL();
+        ll += ml;
+        ml = 0;
+        offset = 0;
+        overlap = 0;
         outputEof = true;
-        break;
-      }
+      } 
+      fileIOptr->writeSeq(ll, ml, offset, eoj, delim, overlap);
     }
   }
 }

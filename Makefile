@@ -105,3 +105,14 @@ build_beezip_tb:
 	${BEEZIP_TB_CSRC} -CFLAGS "-I${BEEZIP_TB_INC} -std=c++17 -g -O0" \
 	--top-module beezip \
 	-Mdir ${BEEZIP_SIM_DIR}/beezip_tb
+
+SEQ_SERIALIZER_TB_DIR := ${BEEZIP_SRC_DIR}/test/seq_serializer_tb
+SEQ_SERIALIZER_TB_CSRC := $(wildcard ${SEQ_SERIALIZER_TB_DIR}/*.cpp)
+SEQ_SERIALIZER_TB_INC := ${SEQ_SERIALIZER_TB_DIR}
+build_seq_serializer_tb:
+	mkdir -p ${BEEZIP_SIM_DIR}/seq_serializer_tb
+	verilator --cc --exe --build -j 8 --trace-fst \
+	-f ${SEQ_SERIALIZER_TB_DIR}/seq_serializer_tb.f -I${INC_DIR_PATH} \
+	${SEQ_SERIALIZER_TB_CSRC} -CFLAGS "-I${SEQ_SERIALIZER_TB_INC} -std=c++17 -g -O0" \
+	--top-module seq_serializer \
+	-Mdir ${BEEZIP_SIM_DIR}/seq_serializer_tb

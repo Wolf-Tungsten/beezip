@@ -14,9 +14,10 @@ BeeZipFileIO::BeeZipFileIO(std::string inputFilePath, const int jobLen,
   }
   inputFile.seekg(0, std::ios::end);
   int fileSize = inputFile.tellg();
-  if(fileSize % jobLen != 0) {
-    std::cout << "Warning: input file size is not multiple of jobLen, ignore the last " << fileSize % jobLen << " bytes" << std::endl;
-    fileSize -= fileSize % jobLen;
+  tailLL = fileSize % jobLen;
+  if(tailLL != 0) {
+    std::cout << "Warning: input file size is not multiple of jobLen, last " << tailLL << " bytes will be treated as literal" << std::endl;
+    fileSize -= tailLL;
   }
   buffer.resize(fileSize);
   inputFile.seekg(0, std::ios::beg);
@@ -49,6 +50,8 @@ void BeeZipFileIO::writeSeq(int ll, int ml, int offset, bool eoj, bool delim,
 }
 
 int BeeZipFileIO::getFileSize() { return buffer.size(); }
+
+int BeeZipFileIO::getTailLL() { return tailLL; }
 
 void BeeZipFileIO::writeThroughput(long length, long cycle) {
   throughputFilePath = inputFilePath + ".throughput";

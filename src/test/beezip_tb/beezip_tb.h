@@ -10,7 +10,7 @@
 #include "verilated_fst_c.h"
 
 namespace beezip_tb {
-const int HASH_ISSUE_WIDTH = 32;
+const int HASH_ISSUE_WIDTH = 16;
 const int JOB_LEN = 64;
 const int BLOCK_LEN = 1024;
 const int ADDR_WIDTH = 23;

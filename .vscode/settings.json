@@ -7,6 +7,7 @@
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/sim/job_pe_tb",
         "${workspaceFolder}/sim/beezip_tb",
+        "${workspaceFolder}/sim/seq_serializer_tb",
         "/home/gaoruihao/verilator/include"
     ],
     "files.associations": {

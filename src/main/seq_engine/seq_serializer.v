@@ -74,8 +74,10 @@ module seq_serializer (
                             this_seq_overlap_len_reg <= i_overlap_len_ext;
                             this_seq_delim_reg <= 1'b0;
                             if(i_has_gap | i_has_overlap) begin
+                                $display("[seq_serializer @ %0t] S_PASS has_gap=%b, has_overlap=%b, turn to S_WELD", $time, i_has_gap, i_has_overlap);
                                 state_reg[S_WELD] <= 1'b1;
                             end else begin
+                                $display("[seq_serializer @ %0t] S_PASS no gap and no overlap, turn to S_FLUSH", $time);
                                 state_reg[S_FLUSH] <= 1'b1;
                             end
                         end
@@ -114,6 +116,7 @@ module seq_serializer (
                                         end
                                     end
                                 end else begin
+                                    $display("[seq_serializer @ %0t] S_WELD has_gap, merge with input seq, turn to S_FLUSH", $time);
                                     this_seq_ll_reg <= this_seq_ll_reg + i_ll;
                                     this_seq_ml_reg <= i_ml_ext;
                                     this_seq_offset_reg <= i_offset;
@@ -232,6 +235,7 @@ module seq_serializer (
                             this_seq_offset_reg <= next_seq_offset_reg;
                             this_seq_delim_reg <= next_seq_delim_reg;
                         end else begin
+                            $display("[seq_serializer @ %0t] S_FLUSH, next_seq_valid=%b, turn to S_PASS", $time, next_seq_valid_reg);
                             state_reg[S_PASS] <= 1'b1;
                         end
                     end

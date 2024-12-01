@@ -3,7 +3,7 @@
 
 `define TD
 // Parameters
-`define HASH_ISSUE_WIDTH_LOG2 5
+`define HASH_ISSUE_WIDTH_LOG2 4
 `define HASH_ISSUE_WIDTH (2**`HASH_ISSUE_WIDTH_LOG2)
 `define ADDR_WIDTH 23
 `define ROW_SIZE_LOG2 2
