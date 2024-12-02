@@ -21,7 +21,7 @@ module match_pe #(
     output wire match_resp_valid,
     input wire match_resp_ready,
     output wire [TAG_BITS-1:0] match_resp_tag,
-    output wire [`MAX_MATCH_LEN_LOG2:0] match_resp_match_len,
+    output wire [`MATCH_LEN_WIDTH-1:0] match_resp_match_len,
 
     input wire [`ADDR_WIDTH-1:0] write_addr,
     input wire [`MATCH_PE_WIDTH*8-1:0] write_data,
@@ -40,7 +40,7 @@ module match_pe #(
   reg [TAG_BITS-1:0] scoreboard_tag_reg [SCOREBOARD_DEPTH-1:0]; // Job PE 提供的 Tag，Job PE 使用 Tag 来区分不同的请求，这样就不用把请求的地址传回来去
   reg [`ADDR_WIDTH-1:0] scoreboard_head_addr_reg [SCOREBOARD_DEPTH-1:0]; // 匹配开始的头地址
   reg [`ADDR_WIDTH-1:0] scoreboard_history_addr_reg [SCOREBOARD_DEPTH-1:0]; // 匹配开始的历史地址
-  reg [`MAX_MATCH_LEN_LOG2:0] scoreboard_match_len_reg [SCOREBOARD_DEPTH-1:0]; // 记录匹配长度
+  reg [`MATCH_LEN_WIDTH-1:0] scoreboard_match_len_reg [SCOREBOARD_DEPTH-1:0]; // 记录匹配长度
   reg scoreboard_match_contd_reg[SCOREBOARD_DEPTH-1:0];  // 跟踪匹配是否连续
 
   // scoreboard 数据结构衍生状态
@@ -194,7 +194,7 @@ module match_pe #(
                 (pipeline_o_idx == i[SCOREBOARD_ENTRY_INDEX-1:0]) && // 流水线输出有效且指向当前条目
             (pipeline_o_match_len == `MATCH_PE_WIDTH) &&  // 最后一个匹配仍然饱和
             scoreboard_match_contd_reg[i] &&  // 之前的匹配都饱和
-            scoreboard_match_len_reg[i] < (`MAX_MATCH_LEN - `MATCH_PE_WIDTH)) begin // 尚未达到最大匹配长度
+            scoreboard_match_len_reg[i] <= (`MAX_MATCH_LEN - `MATCH_PE_WIDTH * `MATCH_BURST_LEN)) begin // 尚未达到最大匹配长度
           scoreboard_wait_reg[i] <= 1'b1;  // 继续下一轮匹配
         end
       end

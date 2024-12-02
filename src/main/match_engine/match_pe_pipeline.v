@@ -17,7 +17,7 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
     output wire o_valid,
     output wire o_last,
     output wire [SCOREBOARD_ENTRY_INDEX-1:0] o_idx,
-    output wire [`MAX_MATCH_LEN_LOG2:0] o_match_len,
+    output wire [`MATCH_LEN_WIDTH-1:0] o_match_len,
 
     input wire [`ADDR_WIDTH-1:0] i_write_addr,
     input wire [`MATCH_PE_WIDTH*8-1:0] i_write_data,
@@ -96,9 +96,9 @@ module match_pe_pipeline #(parameter SCOREBOARD_ENTRY_INDEX=2, NBPIPE=3, SIZE_LO
         .q({valid_after_comparator, last_after_comparator, idx_after_comparator})
     );
 
-    wire [`MAX_MATCH_LEN_LOG2:0] match_len;
+    wire [`MATCH_LEN_WIDTH-1:0] match_len;
     wire can_ext;
-    match_len_encoder #(.MASK_WIDTH(`MATCH_PE_WIDTH), .MATCH_LEN_WIDTH(`MAX_MATCH_LEN_LOG2+1)) mle_inst (
+    match_len_encoder #(.MASK_WIDTH(`MATCH_PE_WIDTH), .MATCH_LEN_WIDTH(`MATCH_LEN_WIDTH)) mle_inst (
         .compare_bitmask(bytewise_compare_result_reg),
         .match_len(match_len),
         .can_ext(can_ext)

@@ -84,7 +84,7 @@ module lazy_summary_pipeline (
     reg [`LAZY_LEN*`JOB_LEN_LOG2-1:0] s1_ll_reg;
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_match_len_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s1_offset_reg;
-    reg [`LAZY_LEN*(`MATCH_LEN_WIDTH+1)-1:0] s1_move_forward_reg; 
+    reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_move_forward_reg; 
     reg signed [`LAZY_LEN*GAIN_BITS-1:0] s1_gain_reg;
 
     always @(posedge clk) begin
@@ -98,8 +98,8 @@ module lazy_summary_pipeline (
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s1_gain_reg, i, GAIN_BITS) <= `VEC_SLICE(s0_gain_reg, i, GAIN_BITS)
             - `ZERO_EXTEND(`VEC_SLICE(s0_offset_bits_reg, i, `SEQ_OFFSET_BITS_LOG2), GAIN_BITS);
-            `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH+1) <= `VEC_SLICE(s0_match_len_reg, i, `MATCH_LEN_WIDTH) + 
-            `ZERO_EXTEND(`VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2), `MATCH_LEN_WIDTH+1); 
+            `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH) <= `VEC_SLICE(s0_match_len_reg, i, `MATCH_LEN_WIDTH) + 
+            `ZERO_EXTEND(`VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2), `MATCH_LEN_WIDTH); 
         end
     end
 
@@ -109,14 +109,14 @@ module lazy_summary_pipeline (
     reg [`MATCH_LEN_WIDTH-1:0] best_ml;
     reg [`SEQ_OFFSET_BITS-1:0] best_offset;
     reg signed [GAIN_BITS-1:0] best_gain;
-    reg [`MATCH_LEN_WIDTH+1-1:0] best_move_forward;
+    reg [`MATCH_LEN_WIDTH-1:0] best_move_forward;
     always @(*) begin
         best_valid = s1_match_valid_reg[0];
         best_ll = `VEC_SLICE(s1_ll_reg, 0, `JOB_LEN_LOG2);
         best_ml = `VEC_SLICE(s1_match_len_reg, 0, `MATCH_LEN_WIDTH);
         best_offset = `VEC_SLICE(s1_offset_reg, 0, `SEQ_OFFSET_BITS);
         best_gain = `VEC_SLICE(s1_gain_reg, 0, GAIN_BITS);
-        best_move_forward = `VEC_SLICE(s1_move_forward_reg, 0, `MATCH_LEN_WIDTH+1);
+        best_move_forward = `VEC_SLICE(s1_move_forward_reg, 0, `MATCH_LEN_WIDTH);
         for(integer i = 1; i < `LAZY_LEN; i = i + 1) begin
             if(s1_match_valid_reg[i]) begin
                 if(~best_valid | (`VEC_SLICE(s1_gain_reg, i, GAIN_BITS) > best_gain)) begin
@@ -125,7 +125,7 @@ module lazy_summary_pipeline (
                     best_ml = `VEC_SLICE(s1_match_len_reg, i, `MATCH_LEN_WIDTH);
                     best_offset = `VEC_SLICE(s1_offset_reg, i, `SEQ_OFFSET_BITS);
                     best_gain = `VEC_SLICE(s1_gain_reg, i, GAIN_BITS);
-                    best_move_forward = `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH+1);
+                    best_move_forward = `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH);
                 end
             end
         end
@@ -137,7 +137,7 @@ module lazy_summary_pipeline (
     reg s2_delim_reg;
     reg [`MATCH_LEN_WIDTH-1:0] s2_match_len_reg;
     reg [`SEQ_OFFSET_BITS-1:0] s2_offset_reg;
-    reg [`MATCH_LEN_WIDTH+1-1:0] s2_move_forward_reg;
+    reg [`MATCH_LEN_WIDTH-1:0] s2_move_forward_reg;
     always @(posedge clk) begin
         s2_match_done_reg <= s1_match_done_reg;
         s2_seq_head_ptr_reg <= s1_seq_head_ptr_reg;
@@ -161,8 +161,8 @@ module lazy_summary_pipeline (
     reg s3_delim_reg;
 
 
-    wire signed [`MATCH_LEN_WIDTH+2-1:0] s3_overlap_len;
-    assign s3_overlap_len = s2_move_forward_reg + `ZERO_EXTEND(s2_seq_head_ptr_reg, `MATCH_LEN_WIDTH+1) - `JOB_LEN;
+    wire signed [`MATCH_LEN_WIDTH-1:0] s3_overlap_len;
+    assign s3_overlap_len = s2_move_forward_reg + `ZERO_EXTEND(s2_seq_head_ptr_reg, `MATCH_LEN_WIDTH) - `JOB_LEN;
     always @(posedge clk) begin
         s3_match_done_reg <= s2_match_done_reg;
         s3_seq_head_ptr_reg <= s2_seq_head_ptr_reg;

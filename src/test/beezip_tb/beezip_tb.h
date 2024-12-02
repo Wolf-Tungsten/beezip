@@ -19,7 +19,7 @@ const int META_HISTORY_LEN = 15;
 const int MIN_MATCH_LEN = 4;
 const int SEQ_PACKET_SIZE = 4;
 const int SEQ_LL_BITS = 17;
-const int SEQ_ML_BITS = 12;
+const int SEQ_ML_BITS = 11;
 const int SEQ_OFFSET_BITS = 20;
 
 class BeeZipTestbench {
