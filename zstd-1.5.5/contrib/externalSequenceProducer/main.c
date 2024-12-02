@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <sys/time.h>
 
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
@@ -29,8 +28,8 @@ do {                                                    \
 
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: externalSequenceProducer <originalFile> <seqFile> <indexFile>\n");
+    if (argc != 3) {
+        printf("Usage: externalSequenceProducer <raw_file> <seq_file>\n");
         return 1;
     }
 
@@ -38,34 +37,16 @@ int main(int argc, char *argv[]) {
 
     //int simpleSequenceProducerState = 0xdeadbeef;
     static SimpleSimulatorSequenceProducerState simpleSequenceProducerState;
-    simpleSequenceProducerState.seqIdx = 0;
-    simpleSequenceProducerState.blockIdx = 0;
-    char filepath[1024];
-    // load index file
-    sprintf(filepath, "%s", argv[3]);
-    FILE* indexFd = fopen(filepath, "rb");
-    if (indexFd == NULL) {
-        printf("Error: cannot open index file %s\n", filepath);
-        exit(1);
-    }
-    fseek(indexFd, 0, SEEK_END);
-    size_t indexAmount = ftell(indexFd) / sizeof(uint32_t);
-    fseek(indexFd, 0, SEEK_SET);
-    simpleSequenceProducerState.index = (uint32_t*)malloc(sizeof(uint32_t) * indexAmount);
-    fread(simpleSequenceProducerState.index, sizeof(uint32_t), indexAmount, indexFd);
-    uint64_t seqAmount = 0;
-    for (size_t i = 0; i < indexAmount; i++) {
-        seqAmount += simpleSequenceProducerState.index[i];
-    }
+
     // load seq file
+    char filepath[1024];
     sprintf(filepath, "%s", argv[2]);
-    FILE* seqFd = fopen(filepath, "rb");
-    if (seqFd == NULL) {
-        printf("Error: cannot open seq file %s\n", filepath);
+    simpleSequenceProducerState.fd = fopen(filepath, "r");
+    if (simpleSequenceProducerState.fd == NULL) {
+        printf("Error: cannot open file %s\n", filepath);
         exit(1);
     }
-    simpleSequenceProducerState.seqs = (uint64_t*)malloc(sizeof(uint64_t) * seqAmount);
-    fread(simpleSequenceProducerState.seqs, sizeof(uint64_t), seqAmount, seqFd);
+    simpleSequenceProducerState.headLitLen = 0;
 
     // Here is the crucial bit of code!
     ZSTD_registerSequenceProducer(
@@ -129,14 +110,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (memcmp(src, val, srcSize) == 0) {
-        sprintf(filepath, "%s.comp_ratio", argv[1]);
-        FILE *crFd = fopen(filepath, "wb");
         printf("Compression and decompression were successful!\n");
         printf("Original size: %lu\n", srcSize);
         printf("Compressed size: %lu\n", cSize);
         printf("Compression_Ratio: %.3f\n", (double)srcSize / cSize);
-        fprintf(crFd, "%.3f\n", (double)srcSize / cSize);
-        fclose(crFd);
     } else {
         printf("ERROR: input and validation buffers don't match!\n");
         for (size_t i = 0; i < srcSize; i++) {
@@ -152,8 +129,6 @@ int main(int argc, char *argv[]) {
     free(src);
     free(dst);
     free(val);
-    free(simpleSequenceProducerState.seqs);
-    fclose(seqFd);
-    fclose(indexFd);
+    fclose(simpleSequenceProducerState.fd);
     return 0;
 }
