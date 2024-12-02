@@ -128,10 +128,10 @@ void BeeZipTestbench::run() {
   if(!success) {
     std::cout << "Simulation failed with error." << std::endl;
   } else {
+    fileIOptr->writeThroughput(fileIOptr->getFileSize() + fileIOptr->getTailLL(), contextp->time() / 2);
     std::cout << "Simulation finished successfully!" << std::endl;
   }
   tfp->close();
-  fileIOptr->writeThroughput(fileIOptr->getFileSize() + fileIOptr->getTailLL(), contextp->time() / 2);
 }
 
 void BeeZipTestbench::serveInput() {

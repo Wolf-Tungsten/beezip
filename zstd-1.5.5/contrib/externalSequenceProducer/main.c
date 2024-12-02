@@ -114,6 +114,12 @@ int main(int argc, char *argv[]) {
         printf("Original size: %lu\n", srcSize);
         printf("Compressed size: %lu\n", cSize);
         printf("Compression_Ratio: %.3f\n", (double)srcSize / cSize);
+        sprintf(filepath, "%s.compression_ratio", argv[1]);
+        FILE *crFd = fopen(filepath, "w");
+        fprintf(crFd, "length: %lu\n", srcSize);
+        fprintf(crFd, "compressed_length: %lu\n", cSize);
+        fprintf(crFd, "compression_ratio: %.3f\n", (double)srcSize / cSize);
+        fclose(crFd);
     } else {
         printf("ERROR: input and validation buffers don't match!\n");
         for (size_t i = 0; i < srcSize; i++) {

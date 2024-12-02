@@ -161,7 +161,7 @@ module lazy_summary_pipeline (
     reg s3_delim_reg;
 
 
-    wire signed [`MATCH_LEN_WIDTH-1:0] s3_overlap_len;
+    wire signed [`MATCH_LEN_WIDTH+1-1:0] s3_overlap_len;
     assign s3_overlap_len = s2_move_forward_reg + `ZERO_EXTEND(s2_seq_head_ptr_reg, `MATCH_LEN_WIDTH) - `JOB_LEN;
     always @(posedge clk) begin
         s3_match_done_reg <= s2_match_done_reg;
