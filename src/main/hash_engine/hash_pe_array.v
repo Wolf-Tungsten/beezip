@@ -493,6 +493,7 @@ module hash_pe_array(
                     );
                 assign meta_match_history_valid_vec[g_row*`ROW_SIZE + g_col] = meta_mask_buffer_output_history_valid_vec[g_row*`ROW_SIZE + g_col] && 
                 (meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] >= `MIN_MATCH_LEN) && !meta_mask_buffer_output_delim_vec[g_row]; // 非 delim
+                `ifdef HASH_ENGINE_DEBUG_LOG
                 always @(posedge clk) begin
                     if(p_rst_n) begin
                         if(meta_mask_buffer_output_valid && meta_mask_buffer_output_ready) begin
@@ -513,6 +514,7 @@ module hash_pe_array(
                         end
                     end
                 end
+                `endif
             end
         end
     endgenerate

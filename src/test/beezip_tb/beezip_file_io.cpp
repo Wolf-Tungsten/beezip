@@ -64,4 +64,13 @@ void BeeZipFileIO::writeThroughput(long length, long cycle) {
   throughputFile << "throughput: " << (double)length / cycle << "bytes/cycle" << std::endl;
   throughputFile.close();
 }
+
+void BeeZipFileIO::writeError(std::string msg) {
+  std::ofstream errorFile(inputFilePath + ".error");
+  if (!errorFile.is_open()) {
+    throw std::runtime_error("Failed to open error file");
+  }
+  errorFile << msg << std::endl;
+  errorFile.close();
+}
 }  // namespace beezip_tb

@@ -66,6 +66,7 @@ module post_hash_pe_scheduler (
       .output_ready(merge_output_ready)
   );
 
+  `ifdef HASH_ENGINE_DEBUG_LOG
   always @(posedge clk) begin
     if (~rst_n) begin
     end else begin
@@ -92,6 +93,7 @@ module post_hash_pe_scheduler (
       end
     end
   end
+  `endif
 
   wire rc_output_valid;
   wire [`ADDR_WIDTH-1:0] rc_output_head_addr;
@@ -131,6 +133,7 @@ module post_hash_pe_scheduler (
       .output_ready(rc_output_ready)
   );
   // 将 reorder_crossbar 的输出打印供调试检查
+  `ifdef HASH_ENGINE_DEBUG_LOG
   always @(posedge clk) begin
     if (~rst_n) begin
     end else begin
@@ -149,6 +152,7 @@ module post_hash_pe_scheduler (
       end
     end
   end
+  `endif
   hash_row_synchronizer hrs (
       .clk  (clk),
       .rst_n(rst_n),

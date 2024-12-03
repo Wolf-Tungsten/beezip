@@ -38,7 +38,7 @@ def run_sim(sim_path, serializer_path, input_file_path, beezip_mode):
     # run Vseq_serializer
     args = [serializer_path, 
             "+seqFilePath+"+ input_file_path + ".beezip_seq", 
-            "+rawFilePath+"+ input_file_path + ".index"]
+            "+rawFilePath+"+ input_file_path]
     process = subprocess.Popen(args)
     process.wait()
     return process.returncode

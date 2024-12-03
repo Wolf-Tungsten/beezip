@@ -2,13 +2,12 @@
 
 `ifdef DEBUG_LOG
 
-`define HASH_ENGINE_DEBUG_LOG
+//`define HASH_ENGINE_DEBUG_LOG
 
 `ifdef HASH_ENGINE_DEBUG_LOG
-//`define HASH_VALUE_LOG
-//`define HASH_RESULT_LOG
 `endif
-`define MATCH_ENGINE_DEBUG_LOG
+
+//`define MATCH_ENGINE_DEBUG_LOG
 
 `ifdef MATCH_ENGINE_DEBUG_LOG
 

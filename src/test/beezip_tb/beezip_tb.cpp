@@ -123,10 +123,13 @@ void BeeZipTestbench::run() {
     }
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
+    fileIOptr->writeError(e.what());
     success = false;
   }
   if(!success) {
     std::cout << "Simulation failed with error." << std::endl;
+  } else if (interruptSimulation) {
+    std::cout << "Simulation interrupted." << std::endl;
   } else {
     fileIOptr->writeThroughput(fileIOptr->getFileSize() + fileIOptr->getTailLL(), contextp->time() / 2);
     std::cout << "Simulation finished successfully!" << std::endl;

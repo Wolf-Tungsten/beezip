@@ -16,6 +16,7 @@ namespace beezip_tb {
                             int overlap);
         int getFileSize();
         void writeThroughput(long length, long cycle);
+        void writeError(std::string msg);
         int getTailLL();
     private:
         std::vector<char> buffer;
