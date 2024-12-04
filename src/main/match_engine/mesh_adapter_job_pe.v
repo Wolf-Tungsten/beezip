@@ -27,8 +27,24 @@ module mesh_adapter_job_pe#(parameter JOB_PE_IDX = 0) (
     output wire [`MATCH_LEN_WIDTH-1:0] match_resp_match_len
 );
 
-    assign to_mesh_valid = match_req_valid;
-    assign match_req_ready = to_mesh_ready;
+    // to mesh 的路径上需要增加一个 pingpong_reg 以消除组合逻辑环路
+    wire to_mesh_valid_pp;
+    wire to_mesh_ready_pp;
+    wire [`MESH_X_SIZE_LOG2-1:0] to_mesh_x_dst_pp;
+    wire [`MESH_Y_SIZE_LOG2-1:0] to_mesh_y_dst_pp;
+    wire [`MESH_W-1:0] to_mesh_payload_pp;
+    pingpong_reg #(.W(`MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2+`MESH_W)) to_mesh_pp_reg (
+        .clk(clk),
+        .rst_n(rst_n),
+        .input_valid(to_mesh_valid_pp),
+        .input_ready(to_mesh_ready_pp),
+        .input_payload({to_mesh_x_dst_pp, to_mesh_y_dst_pp, to_mesh_payload_pp}),
+        .output_valid(to_mesh_valid),
+        .output_ready(to_mesh_ready),
+        .output_payload({to_mesh_x_dst, to_mesh_y_dst, to_mesh_payload})
+    );
+    assign to_mesh_valid_pp = match_req_valid;
+    assign match_req_ready = to_mesh_ready_pp;
     /* 地址映射关系
     根据 history addr 可确定 shared_match_pe 在 mesh 中的位置
     shared match pe 数量等于 job pe 数量，所有 shared_pe 共同构成一个完整的滑动窗口
@@ -41,9 +57,9 @@ module mesh_adapter_job_pe#(parameter JOB_PE_IDX = 0) (
     localparam IN_MESH_MATCH_PE_ADDR_WIDTH = `WINDOW_LOG - `NUM_JOB_PE_LOG2 ;
     wire [`MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2-1-1:0] mesh_addr = match_req_history_addr[IN_MESH_MATCH_PE_ADDR_WIDTH +: `MESH_X_SIZE_LOG2+`MESH_Y_SIZE_LOG2-1];
     wire [`MESH_Y_SIZE_LOG2-1-1:0] actual_y;
-    assign {actual_y, to_mesh_x_dst} = mesh_addr;
-    assign to_mesh_y_dst = {actual_y, 1'b1};
-    assign to_mesh_payload = {match_req_head_addr, match_req_history_addr, match_req_tag, JOB_PE_IDX[`NUM_JOB_PE_LOG2-1:0]};
+    assign {actual_y, to_mesh_x_dst_pp} = mesh_addr;
+    assign to_mesh_y_dst_pp = {actual_y, 1'b1};
+    assign to_mesh_payload_pp = {match_req_head_addr, match_req_history_addr, match_req_tag, JOB_PE_IDX[`NUM_JOB_PE_LOG2-1:0]};
 
     assign match_resp_valid = from_mesh_valid;
     assign from_mesh_ready = match_resp_ready;

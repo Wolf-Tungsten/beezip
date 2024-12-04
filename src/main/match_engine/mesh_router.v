@@ -64,49 +64,49 @@ module mesh_router #(
 
   /* 先东西后南北 */
   wire n_to_s_has_payload = (i_n_dst_x == i_coord_x) && (i_n_dst_y > i_coord_y);
-  wire n_to_s_valid = i_n_valid && n_to_s_has_payload && i_n_ready;
+  wire n_to_s_valid = i_n_valid && n_to_s_has_payload;
   wire n_to_l_has_payload = (i_n_dst_x == i_coord_x) && (i_n_dst_y == i_coord_y);
-  wire n_to_l_valid = i_n_valid && n_to_l_has_payload && i_n_ready;
+  wire n_to_l_valid = i_n_valid && n_to_l_has_payload;
 
   wire s_to_n_has_payload = (i_s_dst_x == i_coord_x) && (i_s_dst_y < i_coord_y);
-  wire s_to_n_valid = i_s_valid && s_to_n_has_payload && i_s_ready;
+  wire s_to_n_valid = i_s_valid && s_to_n_has_payload;
   wire s_to_l_has_payload = (i_s_dst_x == i_coord_x) && (i_s_dst_y == i_coord_y);
-  wire s_to_l_valid = i_s_valid && s_to_l_has_payload && i_s_ready;
+  wire s_to_l_valid = i_s_valid && s_to_l_has_payload;
 
   wire e_to_n_has_payload = (i_e_dst_x == i_coord_x) && (i_e_dst_y < i_coord_y);
-  wire e_to_n_valid = i_e_valid && e_to_n_has_payload && i_e_ready;
+  wire e_to_n_valid = i_e_valid && e_to_n_has_payload;
   wire e_to_s_has_payload = (i_e_dst_x == i_coord_x) && (i_e_dst_y > i_coord_y);
-  wire e_to_s_valid = i_e_valid && e_to_s_has_payload && i_e_ready;
+  wire e_to_s_valid = i_e_valid && e_to_s_has_payload;
   wire e_to_w_has_payload = (i_e_dst_x < i_coord_x);
-  wire e_to_w_valid = i_e_valid && e_to_w_has_payload && i_e_ready;
+  wire e_to_w_valid = i_e_valid && e_to_w_has_payload;
   wire e_to_l_has_payload = (i_e_dst_x == i_coord_x) && (i_e_dst_y == i_coord_y);
-  wire e_to_l_valid = i_e_valid && e_to_l_has_payload && i_e_ready;
+  wire e_to_l_valid = i_e_valid && e_to_l_has_payload;
 
   wire w_to_n_has_payload = (i_w_dst_x == i_coord_x) && (i_w_dst_y < i_coord_y);
-  wire w_to_n_valid = i_w_valid && w_to_n_has_payload && i_w_ready;
+  wire w_to_n_valid = i_w_valid && w_to_n_has_payload;
   wire w_to_s_has_payload = (i_w_dst_x == i_coord_x) && (i_w_dst_y > i_coord_y);
-  wire w_to_s_valid = i_w_valid && w_to_s_has_payload && i_w_ready;
+  wire w_to_s_valid = i_w_valid && w_to_s_has_payload;
   wire w_to_e_has_payload = (i_w_dst_x > i_coord_x);
-  wire w_to_e_valid = i_w_valid && w_to_e_has_payload && i_w_ready;
+  wire w_to_e_valid = i_w_valid && w_to_e_has_payload;
   wire w_to_l_has_payload = (i_w_dst_x == i_coord_x) && (i_w_dst_y == i_coord_y);
-  wire w_to_l_valid = i_w_valid && w_to_l_has_payload && i_w_ready;
+  wire w_to_l_valid = i_w_valid && w_to_l_has_payload;
 
   wire l_to_n_has_payload = (i_l_dst_x == i_coord_x) && (i_l_dst_y < i_coord_y);
-  wire l_to_n_valid = i_l_valid && l_to_n_has_payload && i_l_ready;
+  wire l_to_n_valid = i_l_valid && l_to_n_has_payload;
   wire l_to_s_has_payload = (i_l_dst_x == i_coord_x) && (i_l_dst_y > i_coord_y);
-  wire l_to_s_valid = i_l_valid && l_to_s_has_payload && i_l_ready;
+  wire l_to_s_valid = i_l_valid && l_to_s_has_payload;
   wire l_to_e_has_payload = (i_l_dst_x > i_coord_x);
-  wire l_to_e_valid = i_l_valid && l_to_e_has_payload && i_l_ready;
+  wire l_to_e_valid = i_l_valid && l_to_e_has_payload;
   wire l_to_w_has_payload = (i_l_dst_x < i_coord_x);
-  wire l_to_w_valid = i_l_valid && l_to_w_has_payload && i_l_ready;
+  wire l_to_w_valid = i_l_valid && l_to_w_has_payload;
 
   wire n_fifo_ready, e_fifo_ready, s_fifo_ready, w_fifo_ready, l_fifo_ready;
 
-  assign i_n_ready = s_fifo_ready && l_fifo_ready;
-  assign i_s_ready = n_fifo_ready && l_fifo_ready;
-  assign i_e_ready = n_fifo_ready && s_fifo_ready && w_fifo_ready && l_fifo_ready;
-  assign i_w_ready = n_fifo_ready && s_fifo_ready && e_fifo_ready && l_fifo_ready;
-  assign i_l_ready = n_fifo_ready && s_fifo_ready && e_fifo_ready && w_fifo_ready;
+  assign i_n_ready = (n_to_s_has_payload & s_fifo_ready) | (n_to_l_has_payload & l_fifo_ready);
+  assign i_s_ready = (s_to_n_has_payload & n_fifo_ready) | (s_to_l_has_payload & l_fifo_ready);
+  assign i_e_ready = (e_to_n_has_payload & n_fifo_ready) | (e_to_s_has_payload & s_fifo_ready) | (e_to_w_has_payload & w_fifo_ready) | (e_to_l_has_payload & l_fifo_ready);
+  assign i_w_ready = (w_to_n_has_payload & n_fifo_ready) | (w_to_s_has_payload & s_fifo_ready) | (w_to_e_has_payload & e_fifo_ready) | (w_to_l_has_payload & l_fifo_ready);
+  assign i_l_ready = (l_to_n_has_payload & n_fifo_ready) | (l_to_s_has_payload & s_fifo_ready) | (l_to_e_has_payload & e_fifo_ready) | (l_to_w_has_payload & w_fifo_ready);
 
   mesh_quad_fifo #(
       .W(W),
