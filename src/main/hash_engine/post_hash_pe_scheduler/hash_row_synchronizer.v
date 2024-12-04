@@ -172,6 +172,7 @@ module hash_row_synchronizer (
     end
   end
 
+  `ifdef HASH_ENGINE_DEBUG_LOG
   always @(posedge clk) begin
     if (~rst_n) begin
     end else begin
@@ -190,6 +191,7 @@ module hash_row_synchronizer (
       end
     end
   end
+  `endif
 
   forward_reg #(
       .W(`ADDR_WIDTH+`HASH_ISSUE_WIDTH*((1+`ADDR_WIDTH+`META_MATCH_LEN_WIDTH+1))+1+`HASH_ISSUE_WIDTH*8)

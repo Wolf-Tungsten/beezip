@@ -41,6 +41,9 @@ def run_sim(sim_path, serializer_path, input_file_path, beezip_mode):
             "+rawFilePath+"+ input_file_path]
     process = subprocess.Popen(args)
     process.wait()
+    # 创建一个文件，表示运行完成
+    with open(input_file_path + ".sim_done", 'w') as f:
+        f.write(input_file_path + " done")
     return process.returncode
 
 # step3: run entropy encoder for each block
@@ -68,6 +71,8 @@ def simulation_single_file(sim_path, serializer_path, entropy_encoder_path, inpu
         p = Process(target=run_entropy_encoder, args=(entropy_encoder_path, path))
         p.start()
         p_list.append(p)
+    for p in p_list:
+        p.join()
 
 
 if __name__ == "__main__":

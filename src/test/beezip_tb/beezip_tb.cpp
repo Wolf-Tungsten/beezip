@@ -63,6 +63,7 @@ BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
   interruptSimulation = false;
   std::signal(SIGSEGV, beezip_tb::BeeZipTestbench::signalHandler);
   std::signal(SIGINT, beezip_tb::BeeZipTestbench::signalHandler);
+  this->inputFilePath = inputFilePath;
 }
 
 BeeZipTestbench::~BeeZipTestbench() { dut->final(); }
@@ -108,8 +109,11 @@ void BeeZipTestbench::run() {
       if (dut->clk) {
         // 读取输出，更新 testbench 内部状态
         if (dut->i_ready && dut->i_valid) {
-          std::cout << "[testbench @ " << contextp->time() << "] input data"
-            << ", headAddr=" << fileIOptr->getHeadAddr() << ", delim=" << (dut->i_delim ? "1" : "0") << std::endl;
+          if (TB_DEBUG_LOG) {
+            std::cout << "[testbench @ " << contextp->time() << "] input data"
+                      << ", headAddr=" << fileIOptr->getHeadAddr()
+                      << ", delim=" << (dut->i_delim ? "1" : "0") << std::endl;
+          }
           fileIOptr->moveInputPtr();
         }
         serveOutput();
@@ -126,12 +130,14 @@ void BeeZipTestbench::run() {
     fileIOptr->writeError(e.what());
     success = false;
   }
-  if(!success) {
+  if (!success) {
     std::cout << "Simulation failed with error." << std::endl;
   } else if (interruptSimulation) {
     std::cout << "Simulation interrupted." << std::endl;
   } else {
-    fileIOptr->writeThroughput(fileIOptr->getFileSize() + fileIOptr->getTailLL(), contextp->time() / 2);
+    fileIOptr->writeThroughput(
+        fileIOptr->getFileSize() + fileIOptr->getTailLL(),
+        contextp->time() / 2);
     std::cout << "Simulation finished successfully!" << std::endl;
   }
   tfp->close();
@@ -149,12 +155,12 @@ void BeeZipTestbench::serveInput() {
                      (((uint32_t)data[i * 4 + 2]) << 16) |
                      (((uint32_t)data[i * 4 + 3]) << 24);
   }
-  if (((nextAddr + HASH_ISSUE_WIDTH) % BLOCK_LEN == 0) || (nextAddr + HASH_ISSUE_WIDTH >= fileIOptr->getFileSize())) {
+  if (((nextAddr + HASH_ISSUE_WIDTH) % BLOCK_LEN == 0) ||
+      (nextAddr + HASH_ISSUE_WIDTH >= fileIOptr->getFileSize())) {
     dut->i_delim = 1;
   } else {
     dut->i_delim = 0;
   }
-
 }
 
 void BeeZipTestbench::serveOutput() {
@@ -197,9 +203,11 @@ void BeeZipTestbench::checkHashResult() {
     if (history_valid) {
       assert(meta_match_len >= MIN_MATCH_LEN &&
              meta_match_len <= META_HISTORY_LEN);
-      std::cout << "history_addr: " << history_addr << std::endl;
-      std::cout << "headAddr: " << headAddr + i << std::endl;
-      std::cout << "meta_match_len: " << meta_match_len << std::endl;
+      if (TB_DEBUG_LOG) {
+        std::cout << "history_addr: " << history_addr << std::endl;
+        std::cout << "headAddr: " << headAddr + i << std::endl;
+        std::cout << "meta_match_len: " << meta_match_len << std::endl;
+      }
       for (int j = 0; j < meta_match_len; j++) {
         if (fileIOptr->probeData(history_addr + j) !=
             fileIOptr->probeData(headAddr + i + j)) {
@@ -224,12 +232,15 @@ void BeeZipTestbench::checkAndWriteSeq() {
       bool eoj = portBit(dut->o_seq_packet_eoj, i);
       bool delim = portBit(dut->o_seq_packet_delim, i);
       int overlap = portSeg32(dut->o_seq_packet_overlap, SEQ_ML_BITS, i);
-      std::cout << "[testbench @ " << contextp->time() << "] get output seq: "
-                << "job_head_addr=" << jobHeadAddr
-                << ", nextVerifyAddr=" << nextVerifyAddr
-                << ", head_addr=" << nextVerifyAddr + ll << ", ll=" << ll
-                << ", ml=" << ml << ", offset=" << offset << ", eoj=" << eoj
-                << ", delim=" << delim << ", overlap=" << overlap << std::endl;
+      if (TB_DEBUG_LOG) {
+        std::cout << "[testbench @ " << contextp->time() << "] get output seq: "
+                  << "job_head_addr=" << jobHeadAddr
+                  << ", nextVerifyAddr=" << nextVerifyAddr
+                  << ", head_addr=" << nextVerifyAddr + ll << ", ll=" << ll
+                  << ", ml=" << ml << ", offset=" << offset << ", eoj=" << eoj
+                  << ", delim=" << delim << ", overlap=" << overlap
+                  << std::endl;
+      }
 
       // 处理 ll
       // 1.从 fileIOptr 中 probe ll 字节数据加入 checkBuffer 尾部
@@ -269,8 +280,16 @@ void BeeZipTestbench::checkAndWriteSeq() {
         offset = 0;
         overlap = 0;
         outputEof = true;
-      } 
+      }
       fileIOptr->writeSeq(ll, ml, offset, eoj, delim, overlap);
+      // print process
+      if (nextVerifyAddr - proceedAddr >= 1024) {
+        proceedAddr = nextVerifyAddr;
+        std::cout << "[testbench @ " << contextp->time()
+                  << "] input file:" << inputFilePath << ", process: "
+                  << double(nextVerifyAddr) / fileIOptr->getFileSize() * 100 << "%"
+                  << std::endl;
+      }
     }
   }
 }

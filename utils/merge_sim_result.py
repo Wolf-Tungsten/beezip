@@ -16,22 +16,25 @@ def get_original_file_name(file_name):
 
 def get_compression_ratio(file_name):
     with open(file_name, 'r') as f:
-        return float(f.read())
+        # 寻找 compression_ratio: .3f 的数字
+        s = f.read()
+        numbers = re.findall(r'\d+\.\d+', s)
+        return float(numbers[0])
+
+def get_compressed_length(file_name):
+    with open(file_name, 'r') as f:
+        s = f.read()
+        compressed_length = int(re.findall(r'compressed_length: (\d+)', s)[0]) 
+        return compressed_length
     
 def get_throughput(file_name):
     with open(file_name, 'r') as f:
+        #length: 5345280
+        #cycle: 429437
         s = f.read()
-        numbers = re.findall(r'\d+', s)
-        return tuple(map(int, numbers))
-
-def weighted_average(value, weight):
-    if len(value) != len(weight):
-        return "Error: The length of value and weight arrays should be the same."
-    
-    total_weight = sum(weight)
-    weighted_sum = sum([value[i] * weight[i] for i in range(len(value))])
-    
-    return weighted_sum / total_weight
+        length = int(re.findall(r'length: (\d+)', s)[0])
+        cycle = int(re.findall(r'cycle: (\d+)', s)[0])
+        return length, cycle
     
 if __name__ == "__main__":
 
@@ -42,31 +45,23 @@ if __name__ == "__main__":
     output_file_dir = args.output_file_dir
 
     throughput_file_list = get_all_file_with_ext(output_file_dir, ".throughput")
-    compression_ratio_file_list = get_all_file_with_ext(output_file_dir, ".comp_ratio")
+    compression_ratio_file_list = get_all_file_with_ext(output_file_dir, ".compression_ratio")
     result_dict = {}
     for (thf_name, thf_path), (comp_name, comp_path) in zip(throughput_file_list, compression_ratio_file_list):
+        print(thf_name, comp_name)
         original_file_name = get_original_file_name(thf_name)
         assert original_file_name == get_original_file_name(comp_name)
         if original_file_name not in result_dict:
             result_dict[original_file_name] = []
-        result_dict[original_file_name].append((get_compression_ratio(comp_path), *get_throughput(thf_path)))
+        result_dict[original_file_name].append((get_compressed_length(comp_path), *get_throughput(thf_path)))
     avg_length_arr = []
     avg_cycle_arr = []
-    avg_comp_ratio_arr = []
-    avg_comp_length = []
+    avg_compressed_length_arr = []
     for file_name, sub_results in result_dict.items():
-        length_arr = []
-        cycle_arr = []
-        comp_ratio_arr = []
-        for comp_ratio, length, cycle in sub_results:
-            length_arr.append(length)
-            cycle_arr.append(cycle)
-            comp_ratio_arr.append(comp_ratio)
+        for compressed_length, length, cycle in sub_results:
             avg_length_arr.append(length)
             avg_cycle_arr.append(cycle)
-            avg_comp_length.append(length / comp_ratio)
-        comp_ratio = weighted_average(comp_ratio_arr, length_arr)
-        throughput = sum(length_arr) / sum(cycle_arr)
+            avg_compressed_length_arr.append(compressed_length)
     
-    comp_ratio = sum(avg_length_arr) / sum(avg_comp_length)
+    comp_ratio = sum(avg_length_arr) / sum(avg_compressed_length_arr)
     print("Throughtput = %.2f GB/s, Compression Ratio = %.2f" % (sum(avg_length_arr) / sum(avg_cycle_arr) * 1000 / 1024, comp_ratio))

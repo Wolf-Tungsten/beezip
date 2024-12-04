@@ -21,7 +21,7 @@ const int SEQ_PACKET_SIZE = 4;
 const int SEQ_LL_BITS = 17;
 const int SEQ_ML_BITS = 11;
 const int SEQ_OFFSET_BITS = 20;
-
+const bool TB_DEBUG_LOG = false;
 class BeeZipTestbench {
  public:
   BeeZipTestbench(std::unique_ptr<VerilatedContext>& contextp,
@@ -36,6 +36,9 @@ class BeeZipTestbench {
   std::unique_ptr<VerilatedFstC> tfp;
   std::unique_ptr<VerilatedContext> contextp;
   std::unique_ptr<Vbeezip> dut;
+
+  std::string inputFilePath;
+  int proceedAddr = 0;
 
   std::unique_ptr<BeeZipFileIO> fileIOptr;
   int hqt;

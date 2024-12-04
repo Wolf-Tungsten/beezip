@@ -44,7 +44,7 @@ run_basic_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt
 	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq_serialized 
 
-run_batch_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
+run_fast_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
 	--sim_path ${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip \
 	--serializer_path ${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer \
@@ -84,6 +84,23 @@ run_batch_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	# @echo "=================================================="
 	# @echo
 
+run_balanced_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
+	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
+	--sim_path ${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip \
+	--serializer_path ${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer \
+	--entropy_encoder_path ${BEEZIP_SIM_DIR}/externalSequenceProducer \
+	--input_file_dir ${CORPUS_DIR}/silesia \
+	--output_file_dir ${BALANCED_SIM_OUT_DIR} \
+	--beezip_mode balanced
+
+run_better_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
+	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
+	--sim_path ${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip \
+	--serializer_path ${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer \
+	--entropy_encoder_path ${BEEZIP_SIM_DIR}/externalSequenceProducer \
+	--input_file_dir ${CORPUS_DIR}/silesia \
+	--output_file_dir ${BETTER_SIM_OUT_DIR} \
+	--beezip_mode better
 
 clean:
 	make -C ${ZSTD_EXT_SEQ_PROD_PATH} clean
