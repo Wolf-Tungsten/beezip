@@ -77,7 +77,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   generate
     for(g_i = 0; g_i < `HASH_ISSUE_WIDTH; g_i = g_i + 1) begin: HASH_BATCH_OFFSET_GEN
       assign `VEC_SLICE(hash_batch_offset, g_i, `SEQ_OFFSET_BITS) = hash_batch_history_valid[g_i] ? 
-      ({hash_batch_head_addr + g_i[`ADDR_WIDTH-1:0] - `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH)}[`SEQ_OFFSET_BITS-1:0]) : '0; // 无效的 offset 为 0
+      `SEQ_OFFSET_BITS'(hash_batch_head_addr + g_i[`ADDR_WIDTH-1:0] - `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH)) : '0; // 无效的 offset 为 0
       assign `VEC_SLICE(hash_batch_history_addr_meta_bias, g_i, `ADDR_WIDTH) = `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH) + `META_HISTORY_LEN;
     end
   endgenerate
@@ -116,11 +116,21 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   // seek match head part logic
   reg [`JOB_LEN_LOG2-1:0] seq_head_ptr_reg;
   reg [`JOB_LEN_LOG2-1:0] match_head_ptr_reg;
+  reg [`JOB_LEN_LOG2+1-1:0] match_head_ptr_plus_reg[`LAZY_LEN-1:0];
+  wire [`JOB_LEN_LOG2-1:0] match_head_ptr_plus_idx[`LAZY_LEN-1:0];
+  generate
+    for(g_i = 0; g_i < `LAZY_LEN; g_i = g_i + 1) begin: MATCH_HEAD_PTR_PLUS_IDX_GEN
+      assign match_head_ptr_plus_idx[g_i] = (`JOB_LEN_LOG2)'(match_head_ptr_plus_reg[g_i]);
+    end
+  endgenerate
   
   always @(posedge clk) begin
     if (state_reg == S_LOAD) begin
       seq_head_ptr_reg   <= 0;
       match_head_ptr_reg <= 0;
+      for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+        match_head_ptr_plus_reg[i] <= (`JOB_LEN_LOG2+1)'(i);
+      end
     end else if (state_reg == S_SEEK_MATCH_HEAD) begin
       `ifdef JOB_PE_DEBUG_LOG
       $display("[job_pe %0d @ %0t] HistoryValid=%b", JOB_PE_IDX, $time, job_tbl_history_valid_reg);
@@ -130,21 +140,33 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         $display("[job_pe %0d @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 8", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
         `endif
         match_head_ptr_reg <= match_head_ptr_reg + 8;
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+          match_head_ptr_plus_reg[i] <= match_head_ptr_plus_reg[i] + 8;
+        end
       end else if ((match_head_ptr_reg < `JOB_LEN - 4) && (job_tbl_history_valid_reg[match_head_ptr_reg +: 4] == 4'h0)) begin
         `ifdef JOB_PE_DEBUG_LOG
         $display("[job_pe %0d @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 4", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
         `endif
         match_head_ptr_reg <= match_head_ptr_reg + 4;
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+          match_head_ptr_plus_reg[i] <= match_head_ptr_plus_reg[i] + 4;
+        end
       end else if ((match_head_ptr_reg < `JOB_LEN - 1) && (job_tbl_history_valid_reg[match_head_ptr_reg] == 1'b0)) begin
         `ifdef JOB_PE_DEBUG_LOG
         $display("[job_pe %0d @ %0t] SEEK_MATCH_HEAD seq_head=%d, match_head=%d, move 1", JOB_PE_IDX, $time, seq_head_ptr_reg, match_head_ptr_reg);
         `endif
         match_head_ptr_reg <= match_head_ptr_reg + 1;
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+          match_head_ptr_plus_reg[i] <= match_head_ptr_plus_reg[i] + 1;
+        end
       end
     end else if (state_reg == S_LAZY_SUMMARY) begin
       if (seq_valid && seq_ready) begin
         seq_head_ptr_reg <= seq_head_ptr_reg + move_forward;
         match_head_ptr_reg <= seq_head_ptr_reg + move_forward;
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+          match_head_ptr_plus_reg[i] <= seq_head_ptr_reg + (`JOB_LEN_LOG2+1)'(i) + move_forward;
+        end
       end
     end
   end
@@ -158,12 +180,12 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   reg [`LAZY_LEN*`ADDR_WIDTH-1:0] lazy_tbl_history_addr_reg;
   reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] lazy_tbl_match_len_reg;
   reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] lazy_tbl_offset_reg;
-  function automatic [`JOB_LEN_LOG2-1:0] match_head_relative_idx;
-    input integer idx;
-    begin
-      match_head_relative_idx = match_head_ptr_reg + idx[`JOB_LEN_LOG2-1:0];
-    end
-  endfunction
+  // function automatic [`JOB_LEN_LOG2-1:0] match_head_relative_idx;
+  //   input integer idx;
+  //   begin
+  //     match_head_relative_idx = match_head_ptr_reg + idx[`JOB_LEN_LOG2-1:0];
+  //   end
+  // endfunction
 
   always @(posedge clk) begin
     if(state_reg == S_SEEK_MATCH_HEAD && job_tbl_history_valid_reg[match_head_ptr_reg]) begin
@@ -171,31 +193,31 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
       $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load job_head_addr=%0d, match_head=%0d, head_addr=%0d into lazy tbl", JOB_PE_IDX, $time, job_head_addr_reg, match_head_ptr_reg, job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_reg, `ADDR_WIDTH));
       `endif
       for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
-        if({1'b0, match_head_ptr_reg} + i[`JOB_LEN_LOG2+1-1:0] < `JOB_LEN) begin
-          lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)];
+        if(match_head_ptr_plus_reg[i] < `JOB_LEN) begin
+          lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]];
           if(i == 0) begin
-            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)];
+            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]];
           end else begin
             // 相同 offset 不要重复匹配
-            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_relative_idx(i)] 
-            && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)]
-            && (`VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS) != `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i-1), `SEQ_OFFSET_BITS));
+            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] 
+            && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]]
+            && (`VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) != `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i-1], `SEQ_OFFSET_BITS));
           end
-          `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_relative_idx(i);
+          `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_ptr_plus_idx[i];
           // lazy_table 中的地址已经增加了 META_HISTORY_LEN 偏移
-          `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN;
-          `VEC_SLICE(lazy_tbl_history_addr_reg, i, `ADDR_WIDTH) <= `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH);
-          `VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS) <= `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS);
+          `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_plus_idx[i], `ADDR_WIDTH) + `META_HISTORY_LEN;
+          `VEC_SLICE(lazy_tbl_history_addr_reg, i, `ADDR_WIDTH) <= `VEC_SLICE(job_tbl_history_addr_reg, match_head_ptr_plus_idx[i], `ADDR_WIDTH);
+          `VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS) <= `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS);
           // lazy_table 中的 match_len 初始值就是 meta history 的匹配长度
-          `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH);
+          `VEC_SLICE(lazy_tbl_match_len_reg, i, `MATCH_LEN_WIDTH) <= `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_ptr_plus_idx[i], `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH);
           `ifdef JOB_PE_DEBUG_LOG
           $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load lazy_tbl[%0d] valid=%b, pending=%b, next_head_addr=%0d, next_history_addr=%0d, offset=%0d, match_len=%0d", JOB_PE_IDX, $time, i, 
-          job_tbl_history_valid_reg[match_head_relative_idx(i)], 
-          job_tbl_history_valid_reg[match_head_relative_idx(i)] && job_tbl_meta_match_can_ext_reg[match_head_relative_idx(i)], 
-          job_head_addr_reg + `ZERO_EXTEND(match_head_relative_idx(i), `ADDR_WIDTH) + `META_HISTORY_LEN, 
-          `VEC_SLICE(job_tbl_history_addr_reg, match_head_relative_idx(i), `ADDR_WIDTH), 
-          `VEC_SLICE(job_tbl_offset_reg, match_head_relative_idx(i), `SEQ_OFFSET_BITS),
-          `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_relative_idx(i), `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH),
+          job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]], 
+          job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]], 
+          job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_plus_idx[i], `ADDR_WIDTH) + `META_HISTORY_LEN, 
+          `VEC_SLICE(job_tbl_history_addr_reg, match_head_ptr_plus_idx[i], `ADDR_WIDTH), 
+          `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS),
+          `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_ptr_plus_idx[i], `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH),
           );
           `endif
         end else begin

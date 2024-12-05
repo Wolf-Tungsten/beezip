@@ -71,7 +71,7 @@ module lazy_summary_pipeline (
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2+1) <= `ZERO_EXTEND(i_match_head_ptr, `JOB_LEN_LOG2+1) - `ZERO_EXTEND(i_seq_head_ptr, `JOB_LEN_LOG2+1) + i[`JOB_LEN_LOG2+1-1:0];
             `VEC_SLICE(s0_gain_reg, i, GAIN_BITS) <= `ZERO_EXTEND({`VEC_SLICE(i_match_len, i, `MATCH_LEN_WIDTH), 2'b0}, GAIN_BITS)
-            + {4 * (`LAZY_LEN - i)}[GAIN_BITS-1:0];
+            + (GAIN_BITS)'(4 * (`LAZY_LEN - i));
         end
     end
 

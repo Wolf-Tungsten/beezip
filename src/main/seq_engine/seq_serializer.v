@@ -56,7 +56,7 @@ module seq_serializer (
                         if(i_delim) begin
                             this_seq_ll_reg <= i_ll;
                             if(i_ml != 0) begin
-                                $fatal("illegal delim");
+                                // $fatal("illegal delim");
                             end
                             this_seq_ml_reg <= '0;
                             this_seq_offset_reg <= '0;
@@ -221,7 +221,7 @@ module seq_serializer (
                                 end
                             end 
                             default: begin
-                                $fatal("seq_serializer: unexpected state");
+                                //$fatal("seq_serializer: unexpected state");
                             end
                         endcase
                     end

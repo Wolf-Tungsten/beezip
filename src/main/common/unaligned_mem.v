@@ -39,7 +39,7 @@ module unaligned_mem #(parameter WIDTH_BYTES=8, SIZE_BYTES_LOG2=15, NBPIPE=3) (
     assign bank_lo_read_addr = bank_read_addr_base + {{(BANK_ADDR_SIZE-1){1'b0}}, bank_read_sel};
     assign bank_hi_read_addr = bank_read_addr_base;
     assign bank_read_data_concat = bank_read_sel_reg[NBPIPE] ? {bank_lo_read_data, bank_hi_read_data} : {bank_hi_read_data, bank_lo_read_data};
-    assign read_data = {(bank_read_data_concat >> ({read_shift_bytes_reg[NBPIPE], 3'b0}))}[WIDTH_BYTES*8-1:0];
+    assign read_data = (WIDTH_BYTES*8)'(bank_read_data_concat >> ({read_shift_bytes_reg[NBPIPE], 3'b0}));
     integer i;
     always @(posedge clk) begin
         if (~rst_n) begin

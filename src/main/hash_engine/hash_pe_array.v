@@ -313,7 +313,8 @@ module hash_pe_array(
     always @(*) begin: bank_write_data_logic
         integer row, col;
         for(row = 0; row < `NUM_HASH_PE; row = row + 1) begin
-            bank_write_meta_history[row] = {write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0}}[`META_HISTORY_LEN*8-1:0];
+            reg [$bits(write_stage_data_reg_q)-1:0] write_stage_addr_vec_reg_q_shifted = {write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0}};
+            bank_write_meta_history[row] = write_stage_addr_vec_reg_q_shifted[`META_HISTORY_LEN*8-1:0];
             for(col = 0; col < `ROW_SIZE; col = col + 1) begin
                 if(!init_flag_reg_q) begin
                     write_req_data_reg_d[(row * `ROW_SIZE + col) * BANK_WORD_SIZE +: BANK_WORD_SIZE] = 0;
@@ -367,7 +368,8 @@ module hash_pe_array(
         meta_shift_buffer_data = write_stage_data_reg_q[`HASH_ISSUE_WIDTH*8-1:0];
         meta_shift_buffer_delim_vec = write_stage_delim_vec_reg_q;
         for(row = 0; row < `NUM_HASH_PE; row = row + 1) begin
-            meta_shift_buffer_shift_data[row*`META_HISTORY_LEN*8 +: `META_HISTORY_LEN*8] = {write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0}}[`META_HISTORY_LEN*8-1:0];
+            reg [$bits(write_stage_data_reg_q)-1:0] write_stage_addr_vec_reg_q_shifted = {write_stage_data_reg_q >> {write_stage_addr_vec_reg_q[row*`ADDR_WIDTH +: `HASH_ISSUE_WIDTH_LOG2], 3'b0}};
+            meta_shift_buffer_shift_data[row*`META_HISTORY_LEN*8 +: `META_HISTORY_LEN*8] = write_stage_addr_vec_reg_q_shifted[`META_HISTORY_LEN*8-1:0];
             for(col = 0; col < `ROW_SIZE; col = col + 1) begin
                 {bank_readout_history_valid_vec[row*`ROW_SIZE + col],
                  bank_readout_meta_history_vec[(row*`ROW_SIZE + col)*(`META_HISTORY_LEN*8) +: (`META_HISTORY_LEN*8)],

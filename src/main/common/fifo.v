@@ -17,7 +17,8 @@ reg [W-1:0] buffer_reg [DEPTH-1:0];
 reg [ADDR_WIDTH-1:0] head_ptr_reg, tail_ptr_reg;
 reg [COUNT_WIDTH-1:0] count_reg;
 
-assign input_ready = count_reg <= {(DEPTH - 1)}[COUNT_WIDTH-1:0];
+localparam [COUNT_WIDTH-1:0] MAX_COUNT = COUNT_WIDTH'(DEPTH - 1);
+assign input_ready = count_reg <= MAX_COUNT;
 assign output_valid = count_reg > 0;
 assign output_payload = buffer_reg[head_ptr_reg];
 

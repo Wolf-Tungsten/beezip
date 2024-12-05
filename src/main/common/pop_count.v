@@ -10,7 +10,7 @@ module pop_count #(parameter W=16)
     always @(*) begin
         output_count = 0;
         for(i=0; i < W; i=i+1) begin
-            output_count = output_count + `ZERO_EXTEND(input_vec[i], $bits(output_count));
+            output_count = output_count + ($bits(output_count))'(input_vec[i]);
         end
     end
 endmodule
