@@ -31,7 +31,7 @@ module lazy_summary_pipeline (
     reg [`JOB_LEN_LOG2-1:0] s0_seq_head_ptr_reg;
     reg s0_delim_reg;
     reg [`LAZY_LEN-1:0] s0_match_valid_reg;
-    reg [`LAZY_LEN*`JOB_LEN_LOG2+1-1:0] s0_ll_reg;
+    reg [`LAZY_LEN*(`JOB_LEN_LOG2+1)-1:0] s0_ll_reg;
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s0_match_len_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s0_offset_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits_reg;
@@ -81,7 +81,7 @@ module lazy_summary_pipeline (
     reg [`JOB_LEN_LOG2-1:0] s1_seq_head_ptr_reg;
     reg s1_delim_reg;
     reg [`LAZY_LEN-1:0] s1_match_valid_reg;
-    reg [`LAZY_LEN*`JOB_LEN_LOG2+1-1:0] s1_ll_reg;
+    reg [`LAZY_LEN*(`JOB_LEN_LOG2+1)-1:0] s1_ll_reg;
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_match_len_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s1_offset_reg;
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_move_forward_reg; 
@@ -104,29 +104,55 @@ module lazy_summary_pipeline (
     end
 
     // s1 到 s2 选择最佳匹配
-    reg best_valid;
-    reg [`JOB_LEN_LOG2+1-1:0] best_ll;
-    reg [`MATCH_LEN_WIDTH-1:0] best_ml;
-    reg [`SEQ_OFFSET_BITS-1:0] best_offset;
-    reg signed [GAIN_BITS-1:0] best_gain;
-    reg [`MATCH_LEN_WIDTH-1:0] best_move_forward;
+    reg best_valid[`LAZY_LEN*2-1-1:0];
+    reg [`JOB_LEN_LOG2+1-1:0] best_ll[`LAZY_LEN*2-1-1:0];
+    reg [`MATCH_LEN_WIDTH-1:0] best_ml[`LAZY_LEN*2-1-1:0];
+    reg [`SEQ_OFFSET_BITS-1:0] best_offset[`LAZY_LEN*2-1-1:0];
+    reg signed [GAIN_BITS-1:0] best_gain[`LAZY_LEN*2-1-1:0];
+    reg [`MATCH_LEN_WIDTH-1:0] best_move_forward[`LAZY_LEN*2-1-1:0];
     always @(*) begin
-        best_valid = s1_match_valid_reg[0];
-        best_ll = `VEC_SLICE(s1_ll_reg, 0, `JOB_LEN_LOG2+1);
-        best_ml = `VEC_SLICE(s1_match_len_reg, 0, `MATCH_LEN_WIDTH);
-        best_offset = `VEC_SLICE(s1_offset_reg, 0, `SEQ_OFFSET_BITS);
-        best_gain = `VEC_SLICE(s1_gain_reg, 0, GAIN_BITS);
-        best_move_forward = `VEC_SLICE(s1_move_forward_reg, 0, `MATCH_LEN_WIDTH);
-        for(integer i = 1; i < `LAZY_LEN; i = i + 1) begin
-            if(s1_match_valid_reg[i]) begin
-                if(~best_valid | (`VEC_SLICE(s1_gain_reg, i, GAIN_BITS) > best_gain)) begin
-                    best_valid = 1'b1;
-                    best_ll = `VEC_SLICE(s1_ll_reg, i, `JOB_LEN_LOG2+1);
-                    best_ml = `VEC_SLICE(s1_match_len_reg, i, `MATCH_LEN_WIDTH);
-                    best_offset = `VEC_SLICE(s1_offset_reg, i, `SEQ_OFFSET_BITS);
-                    best_gain = `VEC_SLICE(s1_gain_reg, i, GAIN_BITS);
-                    best_move_forward = `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH);
+        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
+            best_valid[i+`LAZY_LEN-1] = s1_match_valid_reg[i];
+            best_ll[i+`LAZY_LEN-1] = `VEC_SLICE(s1_ll_reg, i, `JOB_LEN_LOG2+1);
+            best_ml[i+`LAZY_LEN-1] = `VEC_SLICE(s1_match_len_reg, i, `MATCH_LEN_WIDTH);
+            best_offset[i+`LAZY_LEN-1] = `VEC_SLICE(s1_offset_reg, i, `SEQ_OFFSET_BITS);
+            best_gain[i+`LAZY_LEN-1] = `VEC_SLICE(s1_gain_reg, i, GAIN_BITS);
+            best_move_forward[i+`LAZY_LEN-1] = `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH);
+        end
+        for(integer i = `LAZY_LEN-2; i >= 0 ; i = i - 1) begin
+            best_valid[i] = best_valid[i*2+1] | best_valid[i*2+2];
+            if(best_valid[i*2+1] & best_valid[i*2+2]) begin
+                if(best_gain[i*2+1] > best_gain[i*2+2]) begin
+                    best_ll[i] = best_ll[i*2+1];
+                    best_ml[i] = best_ml[i*2+1];
+                    best_offset[i] = best_offset[i*2+1];
+                    best_gain[i] = best_gain[i*2+1];
+                    best_move_forward[i] = best_move_forward[i*2+1];
+                end else begin
+                    best_ll[i] = best_ll[i*2+2];
+                    best_ml[i] = best_ml[i*2+2];
+                    best_offset[i] = best_offset[i*2+2];
+                    best_gain[i] = best_gain[i*2+2];
+                    best_move_forward[i] = best_move_forward[i*2+2];
                 end
+            end else if(best_valid[i*2+2]) begin
+                best_ll[i] = best_ll[i*2+2];
+                best_ml[i] = best_ml[i*2+2];
+                best_offset[i] = best_offset[i*2+2];
+                best_gain[i] = best_gain[i*2+2];
+                best_move_forward[i] = best_move_forward[i*2+2];
+            end else if(best_valid[i*2+1]) begin
+                best_ll[i] = best_ll[i*2+1];
+                best_ml[i] = best_ml[i*2+1];
+                best_offset[i] = best_offset[i*2+1];
+                best_gain[i] = best_gain[i*2+1];
+                best_move_forward[i] = best_move_forward[i*2+1];
+            end else begin
+                best_ll[i] = '0;
+                best_ml[i] = '0;
+                best_offset[i] = '0;
+                best_gain[i] = '0;
+                best_move_forward[i] = '0;
             end
         end
     end
@@ -141,11 +167,11 @@ module lazy_summary_pipeline (
     always @(posedge clk) begin
         s2_match_done_reg <= s1_match_done_reg;
         s2_seq_head_ptr_reg <= s1_seq_head_ptr_reg;
-        s2_ll_reg <= best_ll;
+        s2_ll_reg <= best_ll[0];
         s2_delim_reg <= s1_delim_reg;
-        s2_match_len_reg <= best_ml;
-        s2_offset_reg <= best_offset;
-        s2_move_forward_reg <= best_move_forward;
+        s2_match_len_reg <= best_ml[0];
+        s2_offset_reg <= best_offset[0];
+        s2_move_forward_reg <= best_move_forward[0];
     end
 
     // s2 到 s3 计算 overlap、eoj

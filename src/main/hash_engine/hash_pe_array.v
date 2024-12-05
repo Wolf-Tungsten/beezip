@@ -379,7 +379,7 @@ module hash_pe_array(
 
                 meta_shift_buffer_history_valid_vec[row*`ROW_SIZE + col] =
                                                   bank_readout_history_valid_vec[row*`ROW_SIZE + col] && // history valid
-                                                  (write_stage_addr_vec_reg_q[row * `ADDR_WIDTH +: `ADDR_WIDTH] - meta_shift_buffer_history_addr_vec[(row*`ROW_SIZE + col)*`ADDR_WIDTH +: `ADDR_WIDTH] < `WINDOW_SIZE); // in sliding window
+                                                  (write_stage_addr_vec_reg_q[row * `ADDR_WIDTH +: `ADDR_WIDTH] - meta_shift_buffer_history_addr_vec[(row*`ROW_SIZE + col)*`ADDR_WIDTH +: `ADDR_WIDTH] < (`WINDOW_SIZE-1)); // in sliding window
                 
 
 
