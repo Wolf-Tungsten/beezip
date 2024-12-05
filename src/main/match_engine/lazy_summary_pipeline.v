@@ -103,78 +103,101 @@ module lazy_summary_pipeline (
         end
     end
 
-    // s1 到 s2 选择最佳匹配
-    reg best_valid[`LAZY_LEN*2-1-1:0];
-    reg [`JOB_LEN_LOG2+1-1:0] best_ll[`LAZY_LEN*2-1-1:0];
-    reg [`MATCH_LEN_WIDTH-1:0] best_ml[`LAZY_LEN*2-1-1:0];
-    reg [`SEQ_OFFSET_BITS-1:0] best_offset[`LAZY_LEN*2-1-1:0];
-    reg signed [GAIN_BITS-1:0] best_gain[`LAZY_LEN*2-1-1:0];
-    reg [`MATCH_LEN_WIDTH-1:0] best_move_forward[`LAZY_LEN*2-1-1:0];
-    always @(*) begin
-        for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
-            best_valid[i+`LAZY_LEN-1] = s1_match_valid_reg[i];
-            best_ll[i+`LAZY_LEN-1] = `VEC_SLICE(s1_ll_reg, i, `JOB_LEN_LOG2+1);
-            best_ml[i+`LAZY_LEN-1] = `VEC_SLICE(s1_match_len_reg, i, `MATCH_LEN_WIDTH);
-            best_offset[i+`LAZY_LEN-1] = `VEC_SLICE(s1_offset_reg, i, `SEQ_OFFSET_BITS);
-            best_gain[i+`LAZY_LEN-1] = `VEC_SLICE(s1_gain_reg, i, GAIN_BITS);
-            best_move_forward[i+`LAZY_LEN-1] = `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH);
-        end
-        for(integer i = `LAZY_LEN-2; i >= 0 ; i = i - 1) begin
-            best_valid[i] = best_valid[i*2+1] | best_valid[i*2+2];
-            if(best_valid[i*2+1] & best_valid[i*2+2]) begin
-                if(best_gain[i*2+1] > best_gain[i*2+2]) begin
-                    best_ll[i] = best_ll[i*2+1];
-                    best_ml[i] = best_ml[i*2+1];
-                    best_offset[i] = best_offset[i*2+1];
-                    best_gain[i] = best_gain[i*2+1];
-                    best_move_forward[i] = best_move_forward[i*2+1];
+    localparam BEST_LAYER = $clog2(`LAZY_LEN);
+    reg best_match_done_reg[BEST_LAYER-1:0];
+    reg [`JOB_LEN_LOG2-1:0] best_seq_head_ptr_reg[BEST_LAYER-1:0];
+    reg best_delim_reg[BEST_LAYER-1:0];
+    reg best_match_valid_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+    reg [`JOB_LEN_LOG2+1-1:0] best_ll_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+    reg [`MATCH_LEN_WIDTH-1:0] best_match_len_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+    reg [`SEQ_OFFSET_BITS-1:0] best_offset_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+    reg signed [GAIN_BITS-1:0] best_gain_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+    reg [`MATCH_LEN_WIDTH-1:0] best_move_forward_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+
+    always @(posedge clk) begin
+        best_match_done_reg[0] <= s1_match_done_reg;
+        best_seq_head_ptr_reg[0] <= s1_seq_head_ptr_reg;
+        best_delim_reg[0] <= s1_delim_reg;
+        for(integer i = 0; i < `LAZY_LEN / 2; i = i + 1) begin
+            best_match_valid_reg[0][i] = s1_match_valid_reg[i * 2] | s1_match_valid_reg[i * 2 + 1];
+            if(s1_match_valid_reg[i * 2] & s1_match_valid_reg[i * 2 + 1]) begin
+                if(`VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS) > `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS)) begin //s1_gain_reg[i * 2] > s1_gain_reg[i * 2 + 1]
+                    best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2, `JOB_LEN_LOG2+1);
+                    best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2, `MATCH_LEN_WIDTH);
+                    best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2, `SEQ_OFFSET_BITS);
+                    best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS);
+                    best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2, `MATCH_LEN_WIDTH);
                 end else begin
-                    best_ll[i] = best_ll[i*2+2];
-                    best_ml[i] = best_ml[i*2+2];
-                    best_offset[i] = best_offset[i*2+2];
-                    best_gain[i] = best_gain[i*2+2];
-                    best_move_forward[i] = best_move_forward[i*2+2];
+                    best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2 + 1, `JOB_LEN_LOG2+1);
+                    best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
+                    best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2 + 1, `SEQ_OFFSET_BITS);
+                    best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS);
+                    best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
                 end
-            end else if(best_valid[i*2+2]) begin
-                best_ll[i] = best_ll[i*2+2];
-                best_ml[i] = best_ml[i*2+2];
-                best_offset[i] = best_offset[i*2+2];
-                best_gain[i] = best_gain[i*2+2];
-                best_move_forward[i] = best_move_forward[i*2+2];
-            end else if(best_valid[i*2+1]) begin
-                best_ll[i] = best_ll[i*2+1];
-                best_ml[i] = best_ml[i*2+1];
-                best_offset[i] = best_offset[i*2+1];
-                best_gain[i] = best_gain[i*2+1];
-                best_move_forward[i] = best_move_forward[i*2+1];
+            end else if(s1_match_valid_reg[i * 2 + 1]) begin
+                best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2 + 1, `JOB_LEN_LOG2+1);
+                best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
+                best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2 + 1, `SEQ_OFFSET_BITS);
+                best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS);
+                best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
+            end else if(s1_match_valid_reg[i * 2]) begin
+                best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2, `JOB_LEN_LOG2+1);
+                best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2, `MATCH_LEN_WIDTH);
+                best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2, `SEQ_OFFSET_BITS);
+                best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS);
+                best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2, `MATCH_LEN_WIDTH);
             end else begin
-                best_ll[i] = '0;
-                best_ml[i] = '0;
-                best_offset[i] = '0;
-                best_gain[i] = '0;
-                best_move_forward[i] = '0;
+                best_ll_reg[0][i] = '0;
+                best_match_len_reg[0][i] = '0;
+                best_offset_reg[0][i] = '0;
+                best_gain_reg[0][i] = '0;
+                best_move_forward_reg[0][i] = '0;
+            end
+        end
+        for(integer layer = 1; layer < BEST_LAYER; layer = layer + 1) begin
+            best_match_done_reg[layer] <= best_match_done_reg[layer-1];
+            best_seq_head_ptr_reg[layer] <= best_seq_head_ptr_reg[layer-1];
+            best_delim_reg[layer] <= best_delim_reg[layer-1];
+            for(integer i = 0; i < `LAZY_LEN / (2**(layer+1)); i = i+1) begin
+                best_match_valid_reg[layer][i] = best_match_valid_reg[layer-1][i * 2] | best_match_valid_reg[layer-1][i * 2 + 1];
+                if(best_match_valid_reg[layer-1][i * 2] & best_match_valid_reg[layer-1][i * 2 + 1]) begin
+                    if(best_gain_reg[layer-1][i * 2] > best_gain_reg[layer-1][i * 2 + 1]) begin
+                        best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2];
+                        best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2];
+                        best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2];
+                        best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2];
+                        best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2];
+                    end else begin
+                        best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2 + 1];
+                        best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2 + 1];
+                        best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2 + 1];
+                        best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2 + 1];
+                        best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2 + 1];
+                    end
+                end else if(best_match_valid_reg[layer-1][i * 2 + 1]) begin
+                    best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2 + 1];
+                    best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2 + 1];
+                    best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2 + 1];
+                    best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2 + 1];
+                    best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2 + 1];
+                end else if(best_match_valid_reg[layer-1][i * 2]) begin
+                    best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2];
+                    best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2];
+                    best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2];
+                    best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2];
+                    best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2];
+                end else begin
+                    best_ll_reg[layer][i] = '0;
+                    best_match_len_reg[layer][i] = '0;
+                    best_offset_reg[layer][i] = '0;
+                    best_gain_reg[layer][i] = '0;
+                    best_move_forward_reg[layer][i] = '0;
+                end
             end
         end
     end
 
-    reg s2_match_done_reg;
-    reg [`JOB_LEN_LOG2-1:0] s2_seq_head_ptr_reg;
-    reg [`JOB_LEN_LOG2+1-1:0] s2_ll_reg;
-    reg s2_delim_reg;
-    reg [`MATCH_LEN_WIDTH-1:0] s2_match_len_reg;
-    reg [`SEQ_OFFSET_BITS-1:0] s2_offset_reg;
-    reg [`MATCH_LEN_WIDTH-1:0] s2_move_forward_reg;
-    always @(posedge clk) begin
-        s2_match_done_reg <= s1_match_done_reg;
-        s2_seq_head_ptr_reg <= s1_seq_head_ptr_reg;
-        s2_ll_reg <= best_ll[0];
-        s2_delim_reg <= s1_delim_reg;
-        s2_match_len_reg <= best_ml[0];
-        s2_offset_reg <= best_offset[0];
-        s2_move_forward_reg <= best_move_forward[0];
-    end
-
-    // s2 到 s3 计算 overlap、eoj
+    // best_reg[LAYER-1] 到 s3 计算 overlap、eoj
     reg s3_match_done_reg;
     reg [`JOB_LEN_LOG2-1:0] s3_seq_head_ptr_reg;
     reg [`JOB_LEN_LOG2+1-1:0] s3_ll_reg;
@@ -188,14 +211,14 @@ module lazy_summary_pipeline (
 
 
     wire signed [`MATCH_LEN_WIDTH+1-1:0] s3_overlap_len;
-    assign s3_overlap_len = s2_move_forward_reg + `ZERO_EXTEND(s2_seq_head_ptr_reg, `MATCH_LEN_WIDTH) - `JOB_LEN;
+    assign s3_overlap_len = best_move_forward_reg[BEST_LAYER-1][0] + `ZERO_EXTEND(best_seq_head_ptr_reg[BEST_LAYER-1], `MATCH_LEN_WIDTH) - `JOB_LEN;
     always @(posedge clk) begin
-        s3_match_done_reg <= s2_match_done_reg;
-        s3_seq_head_ptr_reg <= s2_seq_head_ptr_reg;
-        s3_delim_reg <= s2_delim_reg;
+        s3_match_done_reg <= best_match_done_reg[BEST_LAYER-1];
+        s3_seq_head_ptr_reg <= best_seq_head_ptr_reg[BEST_LAYER-1];
+        s3_delim_reg <= best_delim_reg[BEST_LAYER-1];
         if (s3_overlap_len >= 0) begin
-            if(s2_delim_reg) begin
-                s3_ll_reg <= `JOB_LEN - `ZERO_EXTEND(s2_seq_head_ptr_reg, `JOB_LEN_LOG2+1);
+            if(best_delim_reg[BEST_LAYER-1]) begin
+                s3_ll_reg <= `JOB_LEN - `ZERO_EXTEND(best_seq_head_ptr_reg[BEST_LAYER-1], `JOB_LEN_LOG2+1);
                 s3_ml_reg <= '0;
                 s3_offset_reg <= '0;
                 s3_eoj_reg <= 1'b1;
@@ -203,22 +226,22 @@ module lazy_summary_pipeline (
                 s3_move_to_next_job_reg <= 1'b1;
                 s3_move_forward_reg <= '0;
             end else begin
-                s3_ll_reg <= s2_ll_reg;
-                s3_ml_reg <= s2_match_len_reg;
-                s3_offset_reg <= s2_offset_reg;
+                s3_ll_reg <= best_ll_reg[BEST_LAYER-1][0];
+                s3_ml_reg <= best_match_len_reg[BEST_LAYER-1][0]; //s2_match_len_reg;
+                s3_offset_reg <= best_offset_reg[BEST_LAYER-1][0]; //s2_offset_reg;
                 s3_eoj_reg <= 1'b1;
                 s3_overlap_len_reg <= s3_overlap_len[`SEQ_ML_BITS-1:0];
                 s3_move_to_next_job_reg <= 1'b1;
                 s3_move_forward_reg <= '0;
             end
         end else begin
-            s3_ll_reg <= s2_ll_reg;
-            s3_ml_reg <= s2_match_len_reg;
-            s3_offset_reg <= s2_offset_reg;
+            s3_ll_reg <= best_ll_reg[BEST_LAYER-1][0]; //s2_ll_reg;
+            s3_ml_reg <= best_match_len_reg[BEST_LAYER-1][0]; //s2_match_len_reg;
+            s3_offset_reg <= best_offset_reg[BEST_LAYER-1][0]; //s2_offset_reg;
             s3_eoj_reg <= 1'b0;
             s3_overlap_len_reg <= '0;
             s3_move_to_next_job_reg <= 1'b0;
-            s3_move_forward_reg <= s2_move_forward_reg[`JOB_LEN_LOG2-1:0];
+            s3_move_forward_reg <= best_move_forward_reg[BEST_LAYER-1][0][`JOB_LEN_LOG2-1:0]; //s2_move_forward_reg;
         end
     end
 
@@ -227,7 +250,7 @@ module lazy_summary_pipeline (
     assign o_summary_ll = `ZERO_EXTEND(s3_ll_reg, `SEQ_LL_BITS);
     assign o_summary_ml = s3_ml_reg;
     assign o_summary_offset = s3_offset_reg;
-    assign o_summary_delim = s2_delim_reg;
+    assign o_summary_delim = s3_delim_reg;
     assign o_summary_eoj = s3_eoj_reg;
     assign o_summary_overlap_len = s3_overlap_len_reg;
     assign o_move_to_next_job = s3_move_to_next_job_reg;
