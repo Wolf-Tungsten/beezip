@@ -24,7 +24,7 @@ module lazy_summary_pipeline (
     output wire [`JOB_LEN_LOG2-1:0] o_move_forward
 );
 
-    localparam GAIN_BITS = 32;
+    localparam GAIN_BITS = `MATCH_LEN_WIDTH + 2;
 
     // s0 计算 ll，offset_bits，不包含 offset_bits 的 gain
     reg s0_match_done_reg;
@@ -71,7 +71,7 @@ module lazy_summary_pipeline (
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2+1) <= `ZERO_EXTEND(i_match_head_ptr, `JOB_LEN_LOG2+1) - `ZERO_EXTEND(i_seq_head_ptr, `JOB_LEN_LOG2+1) + i[`JOB_LEN_LOG2+1-1:0];
             `VEC_SLICE(s0_gain_reg, i, GAIN_BITS) <= `ZERO_EXTEND({`VEC_SLICE(i_match_len, i, `MATCH_LEN_WIDTH), 2'b0}, GAIN_BITS)
-            + (GAIN_BITS)'(4 * (`LAZY_LEN - i));
+            + (GAIN_BITS)'(4 * (`LAZY_LEN - i)); // 匹配长度最小4, 4*4 最小为16, ml最大为1024, 最大4KB，12位，
         end
     end
 
