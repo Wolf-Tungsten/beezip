@@ -11,7 +11,7 @@ SeqSerializerTestbench::SeqSerializerTestbench(
   this->contextp->traceEverOn(true);
   this->tfp = std::make_unique<VerilatedFstC>();
   this->dut->trace(this->tfp.get(), 99);
-  std::string traceFilePath = rawFilePath + ".fst";
+  std::string traceFilePath = rawFilePath+ "_serialize" + ".fst";
   this->tfp->open(traceFilePath.c_str());
   this->fileIOptr =
       std::make_unique<SeqSerializerFileIO>(seqFilePath, rawFilePath);
