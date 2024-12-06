@@ -35,7 +35,7 @@ module lazy_summary_pipeline (
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s0_match_len_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s0_offset_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits_reg;
-    reg signed [`LAZY_LEN*GAIN_BITS-1:0] s0_gain_reg;
+    reg [`LAZY_LEN*GAIN_BITS-1:0] s0_gain_reg;
 
     wire [`LAZY_LEN * `SEQ_OFFSET_BITS_LOG2-1:0] reversed_offset_bits;
     wire [`LAZY_LEN * `SEQ_OFFSET_BITS_LOG2-1:0] s0_offset_bits;
@@ -71,7 +71,7 @@ module lazy_summary_pipeline (
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2+1) <= `ZERO_EXTEND(i_match_head_ptr, `JOB_LEN_LOG2+1) - `ZERO_EXTEND(i_seq_head_ptr, `JOB_LEN_LOG2+1) + i[`JOB_LEN_LOG2+1-1:0];
             `VEC_SLICE(s0_gain_reg, i, GAIN_BITS) <= `ZERO_EXTEND({`VEC_SLICE(i_match_len, i, `MATCH_LEN_WIDTH), 2'b0}, GAIN_BITS)
-            + (GAIN_BITS)'(4 * (`LAZY_LEN - i)); // 匹配长度最小4, 4*4 最小为16, ml最大为1024, 最大4KB，12位，
+            + (GAIN_BITS)'(4 * (`LAZY_LEN - i) + `SEQ_OFFSET_BITS + 1); // 匹配长度最小4, 4*4 最小为16, ml最大为1024, 最大4KB，12位，
         end
     end
 
@@ -85,7 +85,7 @@ module lazy_summary_pipeline (
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_match_len_reg;
     reg [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] s1_offset_reg;
     reg [`LAZY_LEN*`MATCH_LEN_WIDTH-1:0] s1_move_forward_reg; 
-    reg signed [`LAZY_LEN*GAIN_BITS-1:0] s1_gain_reg;
+    reg [`LAZY_LEN*GAIN_BITS-1:0] s1_gain_reg;
 
     always @(posedge clk) begin
         s1_match_done_reg <= s0_match_done_reg;
@@ -97,7 +97,7 @@ module lazy_summary_pipeline (
         s1_ll_reg <= s0_ll_reg;
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s1_gain_reg, i, GAIN_BITS) <= s0_match_valid_reg[i] ? (`VEC_SLICE(s0_gain_reg, i, GAIN_BITS)
-            - `ZERO_EXTEND(`VEC_SLICE(s0_offset_bits_reg, i, `SEQ_OFFSET_BITS_LOG2), GAIN_BITS)) : -`SEQ_OFFSET_BITS-1;
+            - `ZERO_EXTEND(`VEC_SLICE(s0_offset_bits_reg, i, `SEQ_OFFSET_BITS_LOG2), GAIN_BITS)) : 0;
             `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH) <= `VEC_SLICE(s0_match_len_reg, i, `MATCH_LEN_WIDTH) + 
             `ZERO_EXTEND(`VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2+1), `MATCH_LEN_WIDTH); 
         end
@@ -111,7 +111,7 @@ module lazy_summary_pipeline (
     reg [`JOB_LEN_LOG2+1-1:0] best_ll_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
     reg [`MATCH_LEN_WIDTH-1:0] best_match_len_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
     reg [`SEQ_OFFSET_BITS-1:0] best_offset_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
-    reg signed [GAIN_BITS-1:0] best_gain_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
+    reg [GAIN_BITS-1:0] best_gain_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
     reg [`MATCH_LEN_WIDTH-1:0] best_move_forward_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
 
     always @(posedge clk) begin
@@ -120,7 +120,7 @@ module lazy_summary_pipeline (
         best_delim_reg[0] <= s1_delim_reg;
         for(integer i = 0; i < `LAZY_LEN / 2; i = i + 1) begin
             best_match_valid_reg[0][i] = s1_match_valid_reg[i * 2] | s1_match_valid_reg[i * 2 + 1];
-            if($signed(`VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS)) > $signed(`VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS))) begin //s1_gain_reg[i * 2] > s1_gain_reg[i * 2 + 1]
+            if(`VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS) > `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS)) begin //s1_gain_reg[i * 2] > s1_gain_reg[i * 2 + 1]
                 best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2, `JOB_LEN_LOG2+1);
                 best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2, `MATCH_LEN_WIDTH);
                 best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2, `SEQ_OFFSET_BITS);
