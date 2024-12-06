@@ -71,7 +71,7 @@ module lazy_summary_pipeline (
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
             `VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2+1) <= `ZERO_EXTEND(i_match_head_ptr, `JOB_LEN_LOG2+1) - `ZERO_EXTEND(i_seq_head_ptr, `JOB_LEN_LOG2+1) + i[`JOB_LEN_LOG2+1-1:0];
             `VEC_SLICE(s0_gain_reg, i, GAIN_BITS) <= `ZERO_EXTEND({`VEC_SLICE(i_match_len, i, `MATCH_LEN_WIDTH), 2'b0}, GAIN_BITS)
-            + (GAIN_BITS)'(4 * (`LAZY_LEN - i)); // 匹配长度最小4, 4*4 最小为16, ml最大为1024, 最大4KB，12位，
+            + (GAIN_BITS)'(4 * (`LAZY_LEN - i)); // 匹配长度最小4, 4*4 最小为16； ml最大为1024, 最大4KB，12位，
         end
     end
 
@@ -96,8 +96,8 @@ module lazy_summary_pipeline (
         s1_offset_reg <= s0_offset_reg;
         s1_ll_reg <= s0_ll_reg;
         for(integer i = 0; i < `LAZY_LEN; i = i + 1) begin
-            `VEC_SLICE(s1_gain_reg, i, GAIN_BITS) <= `VEC_SLICE(s0_gain_reg, i, GAIN_BITS)
-            - `ZERO_EXTEND(`VEC_SLICE(s0_offset_bits_reg, i, `SEQ_OFFSET_BITS_LOG2), GAIN_BITS);
+            `VEC_SLICE(s1_gain_reg, i, GAIN_BITS) <= s1_match_valid_reg[i] ? (`VEC_SLICE(s0_gain_reg, i, GAIN_BITS)
+            - `ZERO_EXTEND(`VEC_SLICE(s0_offset_bits_reg, i, `SEQ_OFFSET_BITS_LOG2), GAIN_BITS)) : -`WINDOW_LOG;
             `VEC_SLICE(s1_move_forward_reg, i, `MATCH_LEN_WIDTH) <= `VEC_SLICE(s0_match_len_reg, i, `MATCH_LEN_WIDTH) + 
             `ZERO_EXTEND(`VEC_SLICE(s0_ll_reg, i, `JOB_LEN_LOG2+1), `MATCH_LEN_WIDTH); 
         end
@@ -120,38 +120,18 @@ module lazy_summary_pipeline (
         best_delim_reg[0] <= s1_delim_reg;
         for(integer i = 0; i < `LAZY_LEN / 2; i = i + 1) begin
             best_match_valid_reg[0][i] = s1_match_valid_reg[i * 2] | s1_match_valid_reg[i * 2 + 1];
-            if(s1_match_valid_reg[i * 2] & s1_match_valid_reg[i * 2 + 1]) begin
-                if(`VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS) > `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS)) begin //s1_gain_reg[i * 2] > s1_gain_reg[i * 2 + 1]
-                    best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2, `JOB_LEN_LOG2+1);
-                    best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2, `MATCH_LEN_WIDTH);
-                    best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2, `SEQ_OFFSET_BITS);
-                    best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS);
-                    best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2, `MATCH_LEN_WIDTH);
-                end else begin
-                    best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2 + 1, `JOB_LEN_LOG2+1);
-                    best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
-                    best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2 + 1, `SEQ_OFFSET_BITS);
-                    best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS);
-                    best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
-                end
-            end else if(s1_match_valid_reg[i * 2 + 1]) begin
-                best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2 + 1, `JOB_LEN_LOG2+1);
-                best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
-                best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2 + 1, `SEQ_OFFSET_BITS);
-                best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS);
-                best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
-            end else if(s1_match_valid_reg[i * 2]) begin
+            if(`VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS) > `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS)) begin //s1_gain_reg[i * 2] > s1_gain_reg[i * 2 + 1]
                 best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2, `JOB_LEN_LOG2+1);
                 best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2, `MATCH_LEN_WIDTH);
                 best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2, `SEQ_OFFSET_BITS);
                 best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2, GAIN_BITS);
                 best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2, `MATCH_LEN_WIDTH);
             end else begin
-                best_ll_reg[0][i] = '0;
-                best_match_len_reg[0][i] = '0;
-                best_offset_reg[0][i] = '0;
-                best_gain_reg[0][i] = '0;
-                best_move_forward_reg[0][i] = '0;
+                best_ll_reg[0][i] = `VEC_SLICE(s1_ll_reg, i * 2 + 1, `JOB_LEN_LOG2+1);
+                best_match_len_reg[0][i] = `VEC_SLICE(s1_match_len_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
+                best_offset_reg[0][i] = `VEC_SLICE(s1_offset_reg, i * 2 + 1, `SEQ_OFFSET_BITS);
+                best_gain_reg[0][i] = `VEC_SLICE(s1_gain_reg, i * 2 + 1, GAIN_BITS);
+                best_move_forward_reg[0][i] = `VEC_SLICE(s1_move_forward_reg, i * 2 + 1, `MATCH_LEN_WIDTH);
             end
         end
         for(integer layer = 1; layer < BEST_LAYER; layer = layer + 1) begin
@@ -160,38 +140,18 @@ module lazy_summary_pipeline (
             best_delim_reg[layer] <= best_delim_reg[layer-1];
             for(integer i = 0; i < `LAZY_LEN / (2**(layer+1)); i = i+1) begin
                 best_match_valid_reg[layer][i] = best_match_valid_reg[layer-1][i * 2] | best_match_valid_reg[layer-1][i * 2 + 1];
-                if(best_match_valid_reg[layer-1][i * 2] & best_match_valid_reg[layer-1][i * 2 + 1]) begin
-                    if(best_gain_reg[layer-1][i * 2] > best_gain_reg[layer-1][i * 2 + 1]) begin
-                        best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2];
-                        best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2];
-                        best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2];
-                        best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2];
-                        best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2];
-                    end else begin
-                        best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2 + 1];
-                        best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2 + 1];
-                        best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2 + 1];
-                        best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2 + 1];
-                        best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2 + 1];
-                    end
-                end else if(best_match_valid_reg[layer-1][i * 2 + 1]) begin
-                    best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2 + 1];
-                    best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2 + 1];
-                    best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2 + 1];
-                    best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2 + 1];
-                    best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2 + 1];
-                end else if(best_match_valid_reg[layer-1][i * 2]) begin
+                if(best_gain_reg[layer-1][i * 2] > best_gain_reg[layer-1][i * 2 + 1]) begin
                     best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2];
                     best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2];
                     best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2];
                     best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2];
                     best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2];
                 end else begin
-                    best_ll_reg[layer][i] = '0;
-                    best_match_len_reg[layer][i] = '0;
-                    best_offset_reg[layer][i] = '0;
-                    best_gain_reg[layer][i] = '0;
-                    best_move_forward_reg[layer][i] = '0;
+                    best_ll_reg[layer][i] = best_ll_reg[layer-1][i * 2 + 1];
+                    best_match_len_reg[layer][i] = best_match_len_reg[layer-1][i * 2 + 1];
+                    best_offset_reg[layer][i] = best_offset_reg[layer-1][i * 2 + 1];
+                    best_gain_reg[layer][i] = best_gain_reg[layer-1][i * 2 + 1];
+                    best_move_forward_reg[layer][i] = best_move_forward_reg[layer-1][i * 2 + 1];
                 end
             end
         end
