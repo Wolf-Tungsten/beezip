@@ -57,6 +57,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   reg [`JOB_LEN-1:0] job_tbl_meta_match_can_ext_reg;
   reg [`JOB_LEN*`SEQ_OFFSET_BITS-1:0] job_tbl_offset_reg; // 在 LOAD 时计算
 
+
   // state machine
   localparam S_LOAD = 3'b001;
   localparam S_SEEK_MATCH_HEAD = 3'b010;
@@ -169,6 +170,11 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         end
       end
     end
+  end
+
+  reg [`SEQ_LL_BITS-1:0] lit_tail_seq_ll_reg;
+  always @(posedge clk) begin
+    lit_tail_seq_ll_reg <= `ZERO_EXTEND((match_head_ptr_reg - seq_head_ptr_reg), `SEQ_LL_BITS) + 1;
   end
 
   
@@ -293,7 +299,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
       end
       S_LIT_TAIL: begin
         seq_valid = 1'b1;
-        seq_ll = `ZERO_EXTEND((match_head_ptr_reg - seq_head_ptr_reg), `SEQ_LL_BITS) + 1;
+        seq_ll = lit_tail_seq_ll_reg;
         seq_ml = '0;
         seq_offset = '0;
         seq_eoj = 1'b1;
