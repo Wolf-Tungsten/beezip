@@ -10,6 +10,9 @@ module sram2p #(parameter AWIDTH = 12, DWIDTH = 72, NBPIPE=3)
      input wire [AWIDTH-1:0] read_address, //<addrb>
      output wire [DWIDTH-1:0] read_data);
 
+    initial begin
+        $display("SRAM2P in %m: DEPTH=%0d rows, DWIDTH=%0d bits per row", 2**AWIDTH, DWIDTH);
+    end
 
     (* ram_style = "ultra" *)
     reg [DWIDTH-1:0] mem[(1<<AWIDTH)-1:0];        // Memory Declaration
@@ -19,6 +22,7 @@ module sram2p #(parameter AWIDTH = 12, DWIDTH = 72, NBPIPE=3)
     // RAM : Both READ and WRITE have a latency of one
     always @ (posedge clk)begin
         if(mem_enable) begin
+            $stop(0);
             if(write_enable) begin
                 mem[write_address] <= write_data;
             end

@@ -15,3 +15,5 @@ run/sim_out/*
 corpus/silesia*
 beezip-ae.tar.gz
 sim/
+*.fst
+*.beezip_seq
