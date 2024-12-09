@@ -52,37 +52,6 @@ run_fast_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	--input_file_dir ${CORPUS_DIR}/silesia \
 	--output_file_dir ${FAST_SIM_OUT_DIR} \
 	--beezip_mode fast
-	# python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py --sim_path ${HW_SIM_BIN} \
-	# --entropy_encoder_path ${SW_SIM_BIN} \
-	# --input_file_dir ${CORPUS_DIR}/silesia \
-	# --output_file_dir ${BALANCED_SIM_OUT_DIR} \
-	# --beezip_mode balanced
-	# python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py --sim_path ${HW_SIM_BIN} \
-	# --entropy_encoder_path ${SW_SIM_BIN} \
-	# --input_file_dir ${CORPUS_DIR}/silesia \
-	# --output_file_dir ${BETTER_SIM_OUT_DIR} \
-	# --beezip_mode better
-	# @echo
-	# @echo "=============== BeeZip Fast Result ==============="
-	# @echo
-	# @python3 ${BEEZIP_UTILS_DIR}/merge_sim_result.py --output_file_dir ${FAST_SIM_OUT_DIR}
-	# @echo
-	# @echo "=================================================="
-	# @echo
-	# @echo
-	# @echo "============= BeeZip Balanced Result ============="
-	# @echo
-	# @python3 ${BEEZIP_UTILS_DIR}/merge_sim_result.py --output_file_dir ${BALANCED_SIM_OUT_DIR}
-	# @echo
-	# @echo "=================================================="
-	# @echo
-	# @echo
-	# @echo "============== BeeZip Better Result =============="
-	# @echo
-	# @python3 ${BEEZIP_UTILS_DIR}/merge_sim_result.py --output_file_dir ${BETTER_SIM_OUT_DIR}
-	# @echo
-	# @echo "=================================================="
-	# @echo
 
 run_balanced_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \

@@ -214,9 +214,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
             lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]];
           end else begin
             // 相同 offset 不要重复匹配
-            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] 
-            && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]]
-            && (`VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) != `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i-1], `SEQ_OFFSET_BITS));
+            lazy_tbl_pending_reg[i] <= 1'b0; // ablation study: do not perform lazy match
           end
           `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_ptr_plus_idx[i];
           // lazy_table 中的地址已经增加了 META_HISTORY_LEN 偏移
