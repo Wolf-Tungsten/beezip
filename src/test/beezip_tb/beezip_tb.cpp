@@ -95,7 +95,7 @@ void BeeZipTestbench::run() {
     while (contextp->time() < 10) {
       dut->clk = !dut->clk;
       dut->eval();
-      tfp->dump(contextp->time());
+      //tfp->dump(contextp->time());
       contextp->timeInc(1);
     }
     dut->o_seq_packet_ready = 1;
@@ -104,7 +104,7 @@ void BeeZipTestbench::run() {
     while (!interruptSimulation && !outputEof) {
       dut->clk = !dut->clk;
       dut->eval();
-      tfp->dump(contextp->time());
+      //tfp->dump(contextp->time());
       contextp->timeInc(1);
       if (dut->clk) {
         // 读取输出，更新 testbench 内部状态
