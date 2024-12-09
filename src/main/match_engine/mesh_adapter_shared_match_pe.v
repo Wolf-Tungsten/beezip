@@ -41,4 +41,10 @@ module mesh_adapter_shared_match_pe (
     assign to_mesh_y_dst = {actual_y, 1'b0};
     assign to_mesh_payload = { {($bits(to_mesh_payload) - $bits(match_resp_match_len) - $bits(local_tag)){1'b0}} ,match_resp_match_len, local_tag};
 
+    always @(posedge clk) begin
+        if(from_mesh_ready && from_mesh_valid) begin
+            $fatal("no request should be sent to shared match_pe");
+        end
+    end
+
 endmodule
