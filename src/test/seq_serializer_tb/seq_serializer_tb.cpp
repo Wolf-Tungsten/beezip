@@ -11,7 +11,7 @@ SeqSerializerTestbench::SeqSerializerTestbench(
   this->contextp->traceEverOn(true);
   this->tfp = std::make_unique<VerilatedFstC>();
   this->dut->trace(this->tfp.get(), 99);
-  std::string traceFilePath = rawFilePath+ "_serialize" + ".fst";
+  std::string traceFilePath = rawFilePath + ".fst";
   this->tfp->open(traceFilePath.c_str());
   this->fileIOptr =
       std::make_unique<SeqSerializerFileIO>(seqFilePath, rawFilePath);
@@ -32,7 +32,7 @@ void SeqSerializerTestbench::run() {
     while (contextp->time() < 10) {
       dut->clk = !dut->clk;
       dut->eval();
-      tfp->dump(contextp->time());
+      //tfp->dump(contextp->time());
       contextp->timeInc(1);
     }
     dut->o_ready = 1;
@@ -53,7 +53,7 @@ void SeqSerializerTestbench::run() {
         serveOutput();
       }
       dut->eval();
-      tfp->dump(contextp->time());
+      //tfp->dump(contextp->time());
       contextp->timeInc(1);
       if(dut->clk) {
         serveInput();

@@ -43,12 +43,12 @@ if __name__ == "__main__":
     parser.add_argument("--output_file_dir", type=str, required=True)
     args = parser.parse_args()
     output_file_dir = args.output_file_dir
+    print(output_file_dir)
 
     throughput_file_list = get_all_file_with_ext(output_file_dir, ".throughput")
     compression_ratio_file_list = get_all_file_with_ext(output_file_dir, ".compression_ratio")
     result_dict = {}
     for (thf_name, thf_path), (comp_name, comp_path) in zip(throughput_file_list, compression_ratio_file_list):
-        print(thf_name, comp_name)
         original_file_name = get_original_file_name(thf_name)
         assert original_file_name == get_original_file_name(comp_name)
         if original_file_name not in result_dict:
@@ -57,11 +57,20 @@ if __name__ == "__main__":
     avg_length_arr = []
     avg_cycle_arr = []
     avg_compressed_length_arr = []
+    file_count = 0
     for file_name, sub_results in result_dict.items():
+        file_compressed_length = 0
+        file_length = 0
+        file_cycle = 0
         for compressed_length, length, cycle in sub_results:
             avg_length_arr.append(length)
             avg_cycle_arr.append(cycle)
             avg_compressed_length_arr.append(compressed_length)
+            file_compressed_length += compressed_length
+            file_length += length
+            file_cycle += cycle
+        file_count += 1
+        print("File: %s, Throughput = %.2f GB/s, Compression Ratio = %.2f" % (file_name, file_length / file_cycle * 1000 / 1024, file_length / file_compressed_length))
     
     comp_ratio = sum(avg_length_arr) / sum(avg_compressed_length_arr)
-    print("Throughtput = %.2f GB/s, Compression Ratio = %.2f" % (sum(avg_length_arr) / sum(avg_cycle_arr) * 1000 / 1024, comp_ratio))
+    print("Summary: Throughtput = %.2f GB/s, Compression Ratio = %.2f" % (sum(avg_length_arr) / sum(avg_cycle_arr) * 1000 / 1024, comp_ratio))

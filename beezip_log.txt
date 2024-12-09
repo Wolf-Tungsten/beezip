@@ -1,1 +1,0 @@
-bash: ./Vbeezip: No such file or directory

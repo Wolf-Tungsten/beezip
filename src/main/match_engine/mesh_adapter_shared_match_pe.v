@@ -2,8 +2,8 @@
 `include "util.vh"
 
 module mesh_adapter_shared_match_pe (
-    input clk,
-    input rst_n,
+    input wire clk,
+    input wire rst_n,
 
     input wire from_mesh_valid,
     output wire from_mesh_ready,

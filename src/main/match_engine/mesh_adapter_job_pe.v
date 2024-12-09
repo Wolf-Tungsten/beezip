@@ -2,8 +2,8 @@
 `include "util.vh"
 
 module mesh_adapter_job_pe#(parameter JOB_PE_IDX = 0) (
-    input clk,
-    input rst_n,
+    input wire clk,
+    input wire rst_n,
 
     input wire match_req_valid,
     output wire match_req_ready,

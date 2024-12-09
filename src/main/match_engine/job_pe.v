@@ -124,6 +124,15 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
       assign match_head_ptr_plus_idx[g_i] = (`JOB_LEN_LOG2)'(match_head_ptr_plus_reg[g_i]);
     end
   endgenerate
+
+    // lazy summary part logic
+  wire lazy_summary_done, lazy_summary_seq_eoj, lazy_summary_overlap_len, lazy_summary_seq_delim, move_to_next_job;
+  wire [`JOB_LEN_LOG2-1:0] move_forward;
+  wire [`SEQ_LL_BITS-1:0] lazy_summary_seq_ll;
+  wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_ml;
+  wire [`SEQ_OFFSET_BITS-1:0] lazy_summary_seq_offset;
+  wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_overlap_len;
+  wire [`JOB_LEN_LOG2-1:0] lazy_summary_seq_head_ptr;
   
   always @(posedge clk) begin
     if (state_reg == S_LOAD) begin
@@ -255,14 +264,6 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
 
   assign match_resp_group_ready = state_reg == S_LAZY_MATCH_RESP;
 
-  // lazy summary part logic
-  wire lazy_summary_done, lazy_summary_seq_eoj, lazy_summary_overlap_len, lazy_summary_seq_delim, move_to_next_job;
-  wire [`JOB_LEN_LOG2-1:0] move_forward;
-  wire [`SEQ_LL_BITS-1:0] lazy_summary_seq_ll;
-  wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_ml;
-  wire [`SEQ_OFFSET_BITS-1:0] lazy_summary_seq_offset;
-  wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_overlap_len;
-  wire [`JOB_LEN_LOG2-1:0] lazy_summary_seq_head_ptr;
   lazy_summary_pipeline lsp_inst(
     .clk(clk),
     

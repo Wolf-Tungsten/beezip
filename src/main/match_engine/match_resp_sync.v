@@ -20,8 +20,8 @@ module match_resp_sync #(
     input wire clk,
     input wire rst_n,
 
-    input req_group_fire,
-    input [L-1:0] req_group_strb,
+    input wire req_group_fire,
+    input wire [L-1:0] req_group_strb,
 
     input wire [C-1:0] resp_valid,
     output wire [C-1:0] resp_ready,
