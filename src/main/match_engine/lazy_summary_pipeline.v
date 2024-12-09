@@ -64,7 +64,7 @@ module lazy_summary_pipeline (
         s0_match_done_reg <= i_match_done;
         s0_seq_head_ptr_reg <= i_seq_head_ptr;
         s0_delim_reg <= i_delim;
-        s0_match_valid_reg <= i_match_valid;
+        s0_match_valid_reg <= i_match_valid & 4'b0001;
         s0_match_len_reg <= i_match_len;
         s0_offset_bits_reg <= s0_offset_bits;
         s0_offset_reg <= i_offset;

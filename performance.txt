@@ -1,42 +1,42 @@
 /home/gaoruihao/hdd0/project/beezip/run/sim_out/fast
-File: dickens, Throughput = 9.63 GB/s, Compression Ratio = 2.50
-File: mozilla, Throughput = 14.27 GB/s, Compression Ratio = 2.38
-File: mr, Throughput = 10.18 GB/s, Compression Ratio = 2.34
-File: nci, Throughput = 14.76 GB/s, Compression Ratio = 8.22
-File: ooffice, Throughput = 13.02 GB/s, Compression Ratio = 1.80
-File: osdb, Throughput = 15.56 GB/s, Compression Ratio = 2.69
-File: reymont, Throughput = 12.05 GB/s, Compression Ratio = 3.03
-File: samba, Throughput = 13.39 GB/s, Compression Ratio = 3.66
-File: sao, Throughput = 15.58 GB/s, Compression Ratio = 1.32
-File: webster, Throughput = 12.93 GB/s, Compression Ratio = 3.12
-File: x-ray, Throughput = 11.44 GB/s, Compression Ratio = 1.40
-File: xml, Throughput = 13.06 GB/s, Compression Ratio = 6.00
-Summary: Throughtput = 13.24 GB/s, Compression Ratio = 2.83
+File: dickens, Throughput = 7.95 GB/s, Compression Ratio = 2.38
+File: mozilla, Throughput = 13.44 GB/s, Compression Ratio = 2.33
+File: mr, Throughput = 9.44 GB/s, Compression Ratio = 2.32
+File: nci, Throughput = 14.66 GB/s, Compression Ratio = 8.28
+File: ooffice, Throughput = 12.31 GB/s, Compression Ratio = 1.77
+File: osdb, Throughput = 15.55 GB/s, Compression Ratio = 2.67
+File: reymont, Throughput = 9.48 GB/s, Compression Ratio = 2.83
+File: samba, Throughput = 12.57 GB/s, Compression Ratio = 3.58
+File: sao, Throughput = 15.55 GB/s, Compression Ratio = 1.31
+File: webster, Throughput = 10.89 GB/s, Compression Ratio = 2.96
+File: x-ray, Throughput = 11.35 GB/s, Compression Ratio = 1.40
+File: xml, Throughput = 12.42 GB/s, Compression Ratio = 5.96
+Summary: Throughtput = 12.14 GB/s, Compression Ratio = 2.76
 /home/gaoruihao/hdd0/project/beezip/run/sim_out/balanced
-File: dickens, Throughput = 7.65 GB/s, Compression Ratio = 2.79
-File: mozilla, Throughput = 7.76 GB/s, Compression Ratio = 2.53
-File: mr, Throughput = 7.83 GB/s, Compression Ratio = 2.59
-File: nci, Throughput = 7.77 GB/s, Compression Ratio = 9.30
-File: ooffice, Throughput = 7.66 GB/s, Compression Ratio = 1.93
-File: osdb, Throughput = 7.83 GB/s, Compression Ratio = 2.80
-File: reymont, Throughput = 7.84 GB/s, Compression Ratio = 3.38
-File: samba, Throughput = 7.57 GB/s, Compression Ratio = 3.96
-File: sao, Throughput = 7.84 GB/s, Compression Ratio = 1.35
-File: webster, Throughput = 7.84 GB/s, Compression Ratio = 3.44
-File: x-ray, Throughput = 7.80 GB/s, Compression Ratio = 1.47
-File: xml, Throughput = 7.52 GB/s, Compression Ratio = 6.49
-Summary: Throughtput = 7.76 GB/s, Compression Ratio = 3.05
+File: dickens, Throughput = 7.11 GB/s, Compression Ratio = 2.69
+File: mozilla, Throughput = 7.75 GB/s, Compression Ratio = 2.51
+File: mr, Throughput = 7.80 GB/s, Compression Ratio = 2.60
+File: nci, Throughput = 7.76 GB/s, Compression Ratio = 9.35
+File: ooffice, Throughput = 7.65 GB/s, Compression Ratio = 1.91
+File: osdb, Throughput = 7.83 GB/s, Compression Ratio = 2.77
+File: reymont, Throughput = 7.84 GB/s, Compression Ratio = 3.33
+File: samba, Throughput = 7.51 GB/s, Compression Ratio = 3.95
+File: sao, Throughput = 7.84 GB/s, Compression Ratio = 1.34
+File: webster, Throughput = 7.84 GB/s, Compression Ratio = 3.41
+File: x-ray, Throughput = 7.79 GB/s, Compression Ratio = 1.47
+File: xml, Throughput = 7.43 GB/s, Compression Ratio = 6.66
+Summary: Throughtput = 7.71 GB/s, Compression Ratio = 3.02
 /home/gaoruihao/hdd0/project/beezip/run/sim_out/better
-File: dickens, Throughput = 6.42 GB/s, Compression Ratio = 2.81
-File: mozilla, Throughput = 5.92 GB/s, Compression Ratio = 2.57
-File: mr, Throughput = 5.44 GB/s, Compression Ratio = 2.58
-File: nci, Throughput = 5.04 GB/s, Compression Ratio = 9.36
-File: ooffice, Throughput = 6.18 GB/s, Compression Ratio = 1.95
-File: osdb, Throughput = 6.31 GB/s, Compression Ratio = 2.82
-File: reymont, Throughput = 6.49 GB/s, Compression Ratio = 3.41
-File: samba, Throughput = 5.98 GB/s, Compression Ratio = 3.98
+File: dickens, Throughput = 6.40 GB/s, Compression Ratio = 2.75
+File: mozilla, Throughput = 5.92 GB/s, Compression Ratio = 2.55
+File: mr, Throughput = 5.44 GB/s, Compression Ratio = 2.61
+File: nci, Throughput = 5.04 GB/s, Compression Ratio = 9.45
+File: ooffice, Throughput = 6.18 GB/s, Compression Ratio = 1.93
+File: osdb, Throughput = 6.31 GB/s, Compression Ratio = 2.79
+File: reymont, Throughput = 6.49 GB/s, Compression Ratio = 3.37
+File: samba, Throughput = 5.95 GB/s, Compression Ratio = 3.98
 File: sao, Throughput = 6.52 GB/s, Compression Ratio = 1.35
-File: webster, Throughput = 6.53 GB/s, Compression Ratio = 3.47
+File: webster, Throughput = 6.53 GB/s, Compression Ratio = 3.44
 File: x-ray, Throughput = 6.53 GB/s, Compression Ratio = 1.48
-File: xml, Throughput = 6.25 GB/s, Compression Ratio = 6.55
-Summary: Throughtput = 5.96 GB/s, Compression Ratio = 3.07
+File: xml, Throughput = 6.21 GB/s, Compression Ratio = 6.73
+Summary: Throughtput = 5.95 GB/s, Compression Ratio = 3.05
