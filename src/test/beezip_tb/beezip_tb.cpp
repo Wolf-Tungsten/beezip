@@ -214,7 +214,7 @@ void BeeZipTestbench::checkHashResult() {
           throw std::runtime_error("meta match error");
         }
       }
-      if (meta_match_len < META_HISTORY_LEN) {
+      if (meta_match_len < 4) {
         assert(!meta_match_can_ext);
       } else {
         assert(meta_match_can_ext);
@@ -257,6 +257,7 @@ void BeeZipTestbench::checkAndWriteSeq() {
         checkBuffer.push_back(checkBuffer[nextVerifyAddr - offset + j]);
         if (checkBuffer[nextVerifyAddr + j] !=
             fileIOptr->probeData(nextVerifyAddr + j)) {
+              std::cout << ml ;
           throw std::runtime_error("ml not match");
         }
       }

@@ -440,8 +440,12 @@ module hash_pe_array(
                 meta_mask_buffer_history_valid_vec[row*`ROW_SIZE + col] = meta_shift_buffer_output_history_valid_vec[row*`ROW_SIZE + col];
                 
                 for(m_i = 0; m_i < `META_HISTORY_LEN; m_i = m_i+1) begin
-                    meta_mask_buffer_meta_history_mask_vec[(row*`ROW_SIZE + col)*`META_HISTORY_LEN + m_i] =
-                        meta_shift_buffer_output_meta_history_vec[(row*`ROW_SIZE + col)*(`META_HISTORY_LEN*8) + m_i*8 +: 8] == meta_shift_buffer_output_shift_data[row*`META_HISTORY_LEN*8 + m_i*8 +: 8];
+                    if(m_i < 4) begin
+                        meta_mask_buffer_meta_history_mask_vec[(row*`ROW_SIZE + col)*`META_HISTORY_LEN + m_i] =
+                            meta_shift_buffer_output_meta_history_vec[(row*`ROW_SIZE + col)*(`META_HISTORY_LEN*8) + m_i*8 +: 8] == meta_shift_buffer_output_shift_data[row*`META_HISTORY_LEN*8 + m_i*8 +: 8];
+                    end else begin
+                        meta_mask_buffer_meta_history_mask_vec[(row*`ROW_SIZE + col)*`META_HISTORY_LEN + m_i] = 1'b0;
+                    end
                 end
             end
         end
@@ -484,6 +488,7 @@ module hash_pe_array(
     wire [`NUM_HASH_PE*`ROW_SIZE-1:0] meta_match_history_valid_vec;
     wire [`NUM_HASH_PE*`ROW_SIZE*`META_MATCH_LEN_WIDTH-1:0] meta_match_len_vec;
     wire [`NUM_HASH_PE*`ROW_SIZE-1:0] meta_match_can_ext_vec;
+    wire [`NUM_HASH_PE*`ROW_SIZE-1:0] meta_match_can_ext_vec_old;
     genvar g_row, g_col;
     generate
         for(g_row = 0; g_row < `NUM_HASH_PE; g_row = g_row+1) begin : meta_match_len_gen_row
@@ -491,8 +496,9 @@ module hash_pe_array(
                 match_len_encoder #(.MASK_WIDTH(`META_HISTORY_LEN), .MATCH_LEN_WIDTH(`META_MATCH_LEN_WIDTH)) match_len_encoder_inst (
                         .compare_bitmask(meta_mask_buffer_output_meta_history_mask_vec[(g_row*`ROW_SIZE + g_col)*`META_HISTORY_LEN +: `META_HISTORY_LEN]),
                         .match_len(meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH]),
-                        .can_ext(meta_match_can_ext_vec[g_row*`ROW_SIZE + g_col])
+                        .can_ext(meta_match_can_ext_vec_old[g_row*`ROW_SIZE + g_col])
                     );
+                assign meta_match_can_ext_vec[g_row*`ROW_SIZE + g_col] = meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] >= 4;
                 assign meta_match_history_valid_vec[g_row*`ROW_SIZE + g_col] = meta_mask_buffer_output_history_valid_vec[g_row*`ROW_SIZE + g_col] && 
                 (meta_match_len_vec[(g_row*`ROW_SIZE + g_col)*`META_MATCH_LEN_WIDTH +: `META_MATCH_LEN_WIDTH] >= `MIN_MATCH_LEN) && !meta_mask_buffer_output_delim_vec[g_row]; // 非 delim
                 `ifdef HASH_ENGINE_DEBUG_LOG

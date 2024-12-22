@@ -79,7 +79,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
     for(g_i = 0; g_i < `HASH_ISSUE_WIDTH; g_i = g_i + 1) begin: HASH_BATCH_OFFSET_GEN
       assign `VEC_SLICE(hash_batch_offset, g_i, `SEQ_OFFSET_BITS) = hash_batch_history_valid[g_i] ? 
       `SEQ_OFFSET_BITS'(hash_batch_head_addr + g_i[`ADDR_WIDTH-1:0] - `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH)) : '0; // 无效的 offset 为 0
-      assign `VEC_SLICE(hash_batch_history_addr_meta_bias, g_i, `ADDR_WIDTH) = `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH) + `META_HISTORY_LEN;
+      assign `VEC_SLICE(hash_batch_history_addr_meta_bias, g_i, `ADDR_WIDTH) = `VEC_SLICE(hash_batch_history_addr, g_i, `ADDR_WIDTH) + 4;
     end
   endgenerate
   assign hash_batch_ready = (state_reg == S_LOAD);
@@ -211,16 +211,19 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         if(match_head_ptr_plus_reg[i] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]];
           if(i == 0) begin
-            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]];
+            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && 
+            job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]] && 
+            `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) < (2 ** `MATCH_PE_2_SIZE_LOG2 - 768);
           end else begin
             // 相同 offset 不要重复匹配
             lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] 
             && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]]
-            && (`VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) != `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i-1], `SEQ_OFFSET_BITS));
+            && (`VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) != `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i-1], `SEQ_OFFSET_BITS))
+            && `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) < (2 ** `MATCH_PE_2_SIZE_LOG2 - 768);
           end
           `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_ptr_plus_idx[i];
           // lazy_table 中的地址已经增加了 META_HISTORY_LEN 偏移
-          `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_plus_idx[i], `ADDR_WIDTH) + `META_HISTORY_LEN;
+          `VEC_SLICE(lazy_tbl_head_addr_reg, i, `ADDR_WIDTH) <= job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_plus_idx[i], `ADDR_WIDTH) + 4;
           `VEC_SLICE(lazy_tbl_history_addr_reg, i, `ADDR_WIDTH) <= `VEC_SLICE(job_tbl_history_addr_reg, match_head_ptr_plus_idx[i], `ADDR_WIDTH);
           `VEC_SLICE(lazy_tbl_offset_reg, i, `SEQ_OFFSET_BITS) <= `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS);
           // lazy_table 中的 match_len 初始值就是 meta history 的匹配长度
@@ -229,7 +232,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
           $display("[job_pe %0d @ %0t] S_SEEK_MATCH_HEAD load lazy_tbl[%0d] valid=%b, pending=%b, next_head_addr=%0d, next_history_addr=%0d, offset=%0d, match_len=%0d", JOB_PE_IDX, $time, i, 
           job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]], 
           job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]], 
-          job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_plus_idx[i], `ADDR_WIDTH) + `META_HISTORY_LEN, 
+          job_head_addr_reg + `ZERO_EXTEND(match_head_ptr_plus_idx[i], `ADDR_WIDTH) + 4, 
           `VEC_SLICE(job_tbl_history_addr_reg, match_head_ptr_plus_idx[i], `ADDR_WIDTH), 
           `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS),
           `ZERO_EXTEND(`VEC_SLICE(job_tbl_meta_match_len_reg, match_head_ptr_plus_idx[i], `META_MATCH_LEN_WIDTH), `MATCH_LEN_WIDTH),
