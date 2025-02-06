@@ -28,7 +28,7 @@ module seq_packet_pick_last (
     output wire o_seq_packet_eoj,
     output wire o_eoj_delim,
     output wire o_eoj_gap_gt_0,
-    output wire o_eoj_gap_eq_0,
+    output wire o_eoj_gap_overlap_eq_0,
     output wire o_eoj_0_lt_overlap_lt_job_len,
     output wire o_eoj_job_len_lte_overlap,
     input wire o_seq_packet_ready
@@ -48,7 +48,7 @@ module seq_packet_pick_last (
   reg seq_packet_eoj;
   reg eoj_delim;
   reg eoj_gap_gt_0;
-  reg eoj_gap_eq_0;
+  reg eoj_gap_overlap_eq_0;
   reg eoj_0_lt_overlap_lt_job_len;
   reg eoj_job_len_lte_overlap;
 
@@ -74,7 +74,7 @@ module seq_packet_pick_last (
         seq_packet_eoj = '0;
         eoj_delim = '0;
         eoj_gap_gt_0 = '0;
-        eoj_gap_eq_0 = '0;
+        eoj_gap_overlap_eq_0 = '0;
         eoj_0_lt_overlap_lt_job_len = '0;
         eoj_job_len_lte_overlap = '0;
       end
@@ -95,7 +95,7 @@ module seq_packet_pick_last (
         seq_packet_eoj = 1'b1;
         eoj_delim = eoj_delim_last_reg;
         eoj_gap_gt_0 = seq_packet_ml_last_reg == 0;
-        eoj_gap_eq_0 = seq_packet_ml_last_reg > 0 && seq_packet_overlap_last_reg == 0;
+        eoj_gap_overlap_eq_0 = seq_packet_ml_last_reg > 0 && seq_packet_overlap_last_reg == 0;
         eoj_0_lt_overlap_lt_job_len = 0 < seq_packet_overlap_last_reg && seq_packet_overlap_last_reg < `JOB_LEN; 
         eoj_job_len_lte_overlap = seq_packet_overlap_last_reg >= `JOB_LEN;
       end
@@ -110,7 +110,7 @@ module seq_packet_pick_last (
         seq_packet_eoj = '0;
         eoj_delim = '0;
         eoj_gap_gt_0 = '0;
-        eoj_gap_eq_0 = '0;
+        eoj_gap_overlap_eq_0 = '0;
         eoj_0_lt_overlap_lt_job_len = '0;
         eoj_job_len_lte_overlap = '0;
       end
@@ -207,7 +207,7 @@ module seq_packet_pick_last (
             o_first_ll_gte_mml,
             o_eoj_delim,
             o_eoj_gap_gt_0,
-            o_eoj_gap_eq_0,
+            o_eoj_gap_overlap_eq_0,
             o_eoj_0_lt_overlap_lt_job_len,
             o_eoj_job_len_lte_overlap
           }
@@ -227,7 +227,7 @@ module seq_packet_pick_last (
         first_ll_gte_mml,
         eoj_delim,
         eoj_gap_gt_0,
-        eoj_gap_eq_0,
+        eoj_gap_overlap_eq_0,
         eoj_0_lt_overlap_lt_job_len,
         eoj_job_len_lte_overlap
       }),
@@ -244,7 +244,7 @@ module seq_packet_pick_last (
         o_first_ll_gte_mml,
         o_eoj_delim,
         o_eoj_gap_gt_0,
-        o_eoj_gap_eq_0,
+        o_eoj_gap_overlap_eq_0,
         o_eoj_0_lt_overlap_lt_job_len,
         o_eoj_job_len_lte_overlap
       }),
