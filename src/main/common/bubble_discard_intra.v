@@ -1,0 +1,61 @@
+
+/**
+模块名称: bubble_discard_intra
+
+模块参数:
+
+W: 数据位宽 (默认值: 8)
+N: 数据通道数量 (默认值: 4)
+SW: 边带信号位宽 (默认值: 13)
+模块端口:
+
+信号名称	方向	位宽	描述
+clk	Input	1	时钟信号
+rst_n	Input	1	复位信号，低电平有效
+i_valid	Input	1	输入数据有效信号，高电平有效
+i_strb	Input	N	输入数据选通信号，每一位对应一个数据通道。i_strb[i]为1表示i_data中的第i个数据有效，为0表示无效。
+i_data	Input	N*W	输入数据，包含N个位宽为W的数据。
+i_side	Input	SW	输入边带信号
+i_ready	Output	1	输入数据就绪信号，高电平表示模块已准备好接收数据
+o_valid	Output	1	输出数据有效信号，高电平有效
+o_strb	Output	N	输出数据选通信号，每一位对应一个数据通道。o_strb[i]为1表示o_data中的第i个数据有效，为0表示无效。有效数据数量与i_strb中1的数量一致。
+o_data	Output	N*W	输出数据，包含N个位宽为W的数据。无效数据用0填充。有效数据的相对顺序与输入保持一致。
+o_side	Output	SW	输出边带信号，与i_side保持一致
+o_ready	Input	1	输出数据就绪信号，高电平表示下游模块已准备好接收数据
+功能描述:
+
+bubble_discard_intra 模块的功能是从一组输入数据中移除无效数据（气泡），并保持有效数据的相对顺序不变。
+
+输入数据: 模块通过 i_valid, i_strb, i_data, 和 i_side 信号接收输入数据。i_data 包含 N 个位宽为 W 的数据，i_strb 指示每个数据的有效性。i_side 是与数据一同输入的边带信息。
+
+数据处理: 模块根据 i_strb 信号，丢弃无效数据（i_strb 对应位为 0 的数据）。有效数据（i_strb 对应位为 1 的数据）被保留，并保持它们在输入数据中的相对顺序。
+
+输出数据: 模块通过 o_valid, o_strb, o_data, 和 o_side 信号输出处理后的数据。o_data 中包含 N 个位宽为 W 的数据，其中无效数据用 0 填充。o_strb 指示每个数据的有效性，其值为1的位数与i_strb中1的数量相等。o_side 与 i_side 保持一致。
+
+握手协议: 输入和输出均采用 ready-valid 握手协议。当 i_valid 和 i_ready 同时为高电平时，输入握手成功，数据被接收。当 o_valid 和 o_ready 同时为高电平时，输出握手成功，数据被发送。
+
+时序要求:
+
+输入数据 (i_valid, i_strb, i_data, i_side) 必须在 i_ready 为高电平期间保持稳定。
+输出数据 (o_valid, o_strb, o_data, o_side) 在 o_ready 为高电平期间保持稳定。
+*/
+
+module bubble_discard_intra #(parameter W = 8, N = 4, SW=13)(
+    input wire clk,
+    input wire rst_n,
+
+    input wire i_valid,
+    input wire [N-1:0] i_strb,
+    input wire [N*W-1:0] i_data,
+    input wire [SW-1:0] i_side,
+    output wire i_ready,
+
+    output wire o_valid,
+    output wire [N-1:0] o_strb,
+    output wire [N*W-1:0] o_data,
+    output wire [SW-1:0] o_side,
+    input wire o_ready
+);
+
+
+endmodule
