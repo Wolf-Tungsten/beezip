@@ -11,6 +11,10 @@ module sram_1r1w #(parameter WORD_SIZE = 8,
    input wire [ADDR_SIZE-1:0] read_address,
    output wire [WORD_SIZE-1:0] read_data);
 
+  initial begin
+    $display("SRAM2P in %m: DEPTH=%0d rows, DWIDTH=%0d bits per row", 2**ADDR_SIZE, WORD_SIZE);
+  end
+
   reg [WORD_SIZE-1:0] memory [0:(1<<ADDR_SIZE)-1];
   reg [ADDR_SIZE-1:0] read_addr_reg;
 

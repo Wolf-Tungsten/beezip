@@ -12,5 +12,6 @@ test_run_tmp/*
 */**/obj_dir
 run/build/*
 run/sim_out/*
+sim/*
 corpus/silesia*
 beezip-ae.tar.gz

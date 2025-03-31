@@ -17,6 +17,7 @@ BETTER_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/better
 hw_comp:
 	verilator -f ${FILE_LIST_PATH} -I${INC_DIR_PATH} --binary --timing \
 	--top-module ${TOP_NAME} -Wno-fatal --build-jobs 32 -O3 \
+	-CFLAGS "-std=c++17 -fcoroutines" \
 	-Mdir ${HW_BUILD_DIR}
 
 sw_comp:
