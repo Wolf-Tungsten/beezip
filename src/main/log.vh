@@ -2,9 +2,9 @@
 
 `ifdef DEBUG_LOG
 
-// `define HASH_ENGINE_DEBUG_LOG
+//`define HASH_ENGINE_DEBUG_LOG
 
-// `define MATCH_ENGINE_DEBUG_LOG
+//`define MATCH_ENGINE_DEBUG_LOG
 
 `ifdef MATCH_ENGINE_DEBUG_LOG
 

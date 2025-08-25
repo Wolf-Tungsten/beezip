@@ -11,7 +11,7 @@ SeqSerializerTestbench::SeqSerializerTestbench(
   this->contextp->traceEverOn(true);
   this->tfp = std::make_unique<VerilatedFstC>();
   this->dut->trace(this->tfp.get(), 99);
-  std::string traceFilePath = rawFilePath + ".fst";
+  std::string traceFilePath = rawFilePath + "_ser.fst";
   this->tfp->open(traceFilePath.c_str());
   this->fileIOptr =
       std::make_unique<SeqSerializerFileIO>(seqFilePath, rawFilePath);
@@ -121,7 +121,7 @@ void SeqSerializerTestbench::checkAndWriteSeq() {
       if (checkBuffer[nextVerifyAddr + j] !=
           fileIOptr->probeData(nextVerifyAddr + j)) {
         std::cout << "nextVerifyAddr: " << nextVerifyAddr << std::endl;
-        throw std::runtime_error("ml not match");
+        throw std::runtime_error("seq_serializer: ml not match");
       }
     }
     nextVerifyAddr += seq.ml;

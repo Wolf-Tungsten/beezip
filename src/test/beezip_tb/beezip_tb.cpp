@@ -257,7 +257,10 @@ void BeeZipTestbench::checkAndWriteSeq() {
         checkBuffer.push_back(checkBuffer[nextVerifyAddr - offset + j]);
         if (checkBuffer[nextVerifyAddr + j] !=
             fileIOptr->probeData(nextVerifyAddr + j)) {
-          throw std::runtime_error("ml not match");
+          throw std::runtime_error("ml not match: nextVerifyAddr=" +
+                                   std::to_string(nextVerifyAddr) +
+                                   ", offset=" + std::to_string(offset) +
+                                   ", j=" + std::to_string(j));
         }
       }
       nextVerifyAddr += ml;

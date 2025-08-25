@@ -5,6 +5,7 @@ module lazy_summary_pipeline (
     input wire clk,
     
     input wire i_match_done,
+    input wire [`ADDR_WIDTH-1:0] i_job_head_addr,
     input wire [`JOB_LEN_LOG2-1:0] i_match_head_ptr,
     input wire [`JOB_LEN_LOG2-1:0] i_seq_head_ptr,
     input wire i_delim,
@@ -13,6 +14,7 @@ module lazy_summary_pipeline (
     input wire [`LAZY_LEN*`SEQ_OFFSET_BITS-1:0] i_offset,
 
     output wire o_summary_done,
+    output wire [`ADDR_WIDTH-1:0] o_summary_job_head_addr,
     output wire [`JOB_LEN_LOG2-1:0] o_seq_head_ptr,
     output wire [`SEQ_LL_BITS-1:0] o_summary_ll,
     output wire [`SEQ_ML_BITS-1:0] o_summary_ml,
@@ -28,6 +30,7 @@ module lazy_summary_pipeline (
 
     // s0 计算 ll，offset_bits，不包含 offset_bits 的 gain
     reg s0_match_done_reg;
+    reg [`ADDR_WIDTH-1:0] s0_job_head_addr_reg;
     reg [`JOB_LEN_LOG2-1:0] s0_seq_head_ptr_reg;
     reg s0_delim_reg;
     reg [`LAZY_LEN-1:0] s0_match_valid_reg;
@@ -62,6 +65,7 @@ module lazy_summary_pipeline (
     
     always @(posedge clk) begin
         s0_match_done_reg <= i_match_done;
+        s0_job_head_addr_reg <= i_job_head_addr;
         s0_seq_head_ptr_reg <= i_seq_head_ptr;
         s0_delim_reg <= i_delim;
         s0_match_valid_reg <= i_match_valid;
@@ -78,6 +82,7 @@ module lazy_summary_pipeline (
     
     // s0 到 s1 计算完整的 gain、move_forward
     reg s1_match_done_reg;
+    reg [`ADDR_WIDTH-1:0] s1_job_head_addr_reg;
     reg [`JOB_LEN_LOG2-1:0] s1_seq_head_ptr_reg;
     reg s1_delim_reg;
     reg [`LAZY_LEN-1:0] s1_match_valid_reg;
@@ -89,6 +94,7 @@ module lazy_summary_pipeline (
 
     always @(posedge clk) begin
         s1_match_done_reg <= s0_match_done_reg;
+        s1_job_head_addr_reg <= s0_job_head_addr_reg;
         s1_seq_head_ptr_reg <= s0_seq_head_ptr_reg;
         s1_delim_reg <= s0_delim_reg;
         s1_match_valid_reg <= s0_match_valid_reg;
@@ -105,6 +111,7 @@ module lazy_summary_pipeline (
 
     localparam BEST_LAYER = $clog2(`LAZY_LEN);
     reg best_match_done_reg[BEST_LAYER-1:0];
+    reg [`ADDR_WIDTH-1:0] best_job_head_addr_reg[BEST_LAYER-1:0];
     reg [`JOB_LEN_LOG2-1:0] best_seq_head_ptr_reg[BEST_LAYER-1:0];
     reg best_delim_reg[BEST_LAYER-1:0];
     reg best_match_valid_reg[BEST_LAYER-1:0][`LAZY_LEN-1:0];
@@ -116,6 +123,7 @@ module lazy_summary_pipeline (
 
     always @(posedge clk) begin
         best_match_done_reg[0] <= s1_match_done_reg;
+        best_job_head_addr_reg[0] <= s1_job_head_addr_reg;
         best_seq_head_ptr_reg[0] <= s1_seq_head_ptr_reg;
         best_delim_reg[0] <= s1_delim_reg;
         for(integer i = 0; i < `LAZY_LEN / 2; i = i + 1) begin
@@ -136,6 +144,7 @@ module lazy_summary_pipeline (
         end
         for(integer layer = 1; layer < BEST_LAYER; layer = layer + 1) begin
             best_match_done_reg[layer] <= best_match_done_reg[layer-1];
+            best_job_head_addr_reg[layer] <= best_job_head_addr_reg[layer-1];
             best_seq_head_ptr_reg[layer] <= best_seq_head_ptr_reg[layer-1];
             best_delim_reg[layer] <= best_delim_reg[layer-1];
             for(integer i = 0; i < `LAZY_LEN / (2**(layer+1)); i = i+1) begin
@@ -159,6 +168,7 @@ module lazy_summary_pipeline (
 
     // best_reg[LAYER-1] 到 s3 计算 overlap、eoj
     reg s3_match_done_reg;
+    reg [`ADDR_WIDTH-1:0] s3_job_head_addr_reg;
     reg [`JOB_LEN_LOG2-1:0] s3_seq_head_ptr_reg;
     reg [`JOB_LEN_LOG2+1-1:0] s3_ll_reg;
     reg [`MATCH_LEN_WIDTH-1:0] s3_ml_reg;
@@ -174,6 +184,7 @@ module lazy_summary_pipeline (
     assign s3_overlap_len = best_move_forward_reg[BEST_LAYER-1][0] + `ZERO_EXTEND(best_seq_head_ptr_reg[BEST_LAYER-1], `MATCH_LEN_WIDTH) - `JOB_LEN;
     always @(posedge clk) begin
         s3_match_done_reg <= best_match_done_reg[BEST_LAYER-1];
+        s3_job_head_addr_reg <= best_job_head_addr_reg[BEST_LAYER-1];
         s3_seq_head_ptr_reg <= best_seq_head_ptr_reg[BEST_LAYER-1];
         s3_delim_reg <= best_delim_reg[BEST_LAYER-1];
         if (s3_overlap_len >= 0) begin
@@ -206,6 +217,7 @@ module lazy_summary_pipeline (
     end
 
     assign o_summary_done = s3_match_done_reg;
+    assign o_summary_job_head_addr = s3_job_head_addr_reg;
     assign o_seq_head_ptr = s3_seq_head_ptr_reg;
     assign o_summary_ll = `ZERO_EXTEND(s3_ll_reg, `SEQ_LL_BITS);
     assign o_summary_ml = s3_ml_reg;

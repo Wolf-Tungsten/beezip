@@ -128,6 +128,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
     // lazy summary part logic
   wire lazy_summary_done, lazy_summary_seq_eoj, lazy_summary_overlap_len, lazy_summary_seq_delim, move_to_next_job;
   wire [`JOB_LEN_LOG2-1:0] move_forward;
+  wire [`ADDR_WIDTH-1:0] lazy_summary_job_head_addr;
   wire [`SEQ_LL_BITS-1:0] lazy_summary_seq_ll;
   wire [`SEQ_ML_BITS-1:0] lazy_summary_seq_ml;
   wire [`SEQ_OFFSET_BITS-1:0] lazy_summary_seq_offset;
@@ -266,7 +267,8 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
 
   lazy_summary_pipeline lsp_inst(
     .clk(clk),
-    
+
+    .i_job_head_addr(job_head_addr_reg), 
     .i_match_done((state_reg == S_LAZY_MATCH_REQ & (&(~lazy_tbl_pending_reg))) | state_reg == S_LAZY_SUMMARY ),
     .i_match_head_ptr(match_head_ptr_reg),
     .i_seq_head_ptr(seq_head_ptr_reg),
@@ -276,6 +278,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
     .i_offset(lazy_tbl_offset_reg),
 
     .o_summary_done(lazy_summary_done),
+    .o_summary_job_head_addr(lazy_summary_job_head_addr),
     .o_seq_head_ptr(lazy_summary_seq_head_ptr),
     .o_summary_ll(lazy_summary_seq_ll),
     .o_summary_ml(lazy_summary_seq_ml),
@@ -290,7 +293,7 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   always @(*) begin
     case(state_reg)
       S_LAZY_SUMMARY: begin
-        seq_valid = lazy_summary_done && (lazy_summary_seq_head_ptr == seq_head_ptr_reg);
+        seq_valid = lazy_summary_done && (lazy_summary_seq_head_ptr == seq_head_ptr_reg) && (lazy_summary_job_head_addr == job_head_addr_reg);
         seq_ll = lazy_summary_seq_ll;
         seq_ml = lazy_summary_seq_ml;
         seq_offset = lazy_summary_seq_offset;
