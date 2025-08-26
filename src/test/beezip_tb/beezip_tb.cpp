@@ -104,7 +104,7 @@ void BeeZipTestbench::run() {
     while (!interruptSimulation && !outputEof) {
       dut->clk = !dut->clk;
       dut->eval();
-      //tfp->dump(contextp->time());
+      tfp->dump(contextp->time());
       contextp->timeInc(1);
       if (dut->clk) {
         // 读取输出，更新 testbench 内部状态
@@ -259,6 +259,8 @@ void BeeZipTestbench::checkAndWriteSeq() {
             fileIOptr->probeData(nextVerifyAddr + j)) {
           throw std::runtime_error("ml not match: nextVerifyAddr=" +
                                    std::to_string(nextVerifyAddr) +
+                                   ", ll=" + std::to_string(ll) +
+                                    ", ml=" + std::to_string(ml) +
                                    ", offset=" + std::to_string(offset) +
                                    ", j=" + std::to_string(j));
         }
