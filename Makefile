@@ -46,10 +46,10 @@ run_basic_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 
 run_tmp_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	mkdir -p ${BASIC_TEST_SIM_OUT_DIR}
-	cp ${CORPUS_DIR}/mozilla_block_4 ${BASIC_TEST_SIM_OUT_DIR}/
-	${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip +inputFilePath+${BASIC_TEST_SIM_OUT_DIR}/mozilla_block_4 +hqt+1 +enableHashCheck+1
-	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/mozilla_block_4.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/mozilla_block_4
-	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/mozilla_block_4 ${BASIC_TEST_SIM_OUT_DIR}/mozilla_block_4.beezip_seq_serialized 
+	cp ${CORPUS_DIR}/tmp_input ${BASIC_TEST_SIM_OUT_DIR}/
+	${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip +inputFilePath+${BASIC_TEST_SIM_OUT_DIR}/tmp_input +hqt+1 +enableHashCheck+1
+	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/tmp_input.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/tmp_input
+	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/tmp_input ${BASIC_TEST_SIM_OUT_DIR}/tmp_input.beezip_seq_serialized 
 
 run_fast_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
