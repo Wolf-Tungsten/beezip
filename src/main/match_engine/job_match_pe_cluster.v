@@ -29,19 +29,7 @@ module job_match_pe_cluster #(
     // local match pe write port
     input wire [`ADDR_WIDTH-1:0] match_pe_write_addr,
     input wire [`MATCH_PE_WIDTH*8-1:0] match_pe_write_data,
-    input wire match_pe_write_enable,
-
-    // to mesh port
-    output wire [`NUM_SHARED_MATCH_PE-1:0] to_mesh_valid,
-    input wire [`NUM_SHARED_MATCH_PE-1:0] to_mesh_ready,
-    output wire [`NUM_SHARED_MATCH_PE * `MESH_X_SIZE_LOG2-1:0] to_mesh_x_dst,
-    output wire [`NUM_SHARED_MATCH_PE * `MESH_Y_SIZE_LOG2-1:0] to_mesh_y_dst,
-    output wire [`NUM_SHARED_MATCH_PE * `MESH_W-1:0] to_mesh_payload,
-
-    // from mesh port
-    input wire [`NUM_SHARED_MATCH_PE-1:0] from_mesh_valid,
-    output wire [`NUM_SHARED_MATCH_PE-1:0] from_mesh_ready,
-    input wire [`NUM_SHARED_MATCH_PE * `MESH_W-1:0] from_mesh_payload
+    input wire match_pe_write_enable
 
 );
 
@@ -100,18 +88,6 @@ module job_match_pe_cluster #(
       .seq_ready(seq_ready)
   );
 
-  // shared match pe request port
-  wire [`NUM_SHARED_MATCH_PE-1:0] shared_match_req_valid;
-  wire [`NUM_SHARED_MATCH_PE-1:0] shared_match_req_ready;
-  wire [`NUM_SHARED_MATCH_PE*`ADDR_WIDTH-1:0] shared_match_req_head_addr;
-  wire [`NUM_SHARED_MATCH_PE*`ADDR_WIDTH-1:0] shared_match_req_history_addr;
-  wire [`NUM_SHARED_MATCH_PE*`LAZY_LEN_LOG2-1:0] shared_match_req_tag;
-
-  // shared match pe response port
-  wire shared_match_resp_valid;
-  wire shared_match_resp_ready;
-  wire [`NUM_SHARED_MATCH_PE*`LAZY_LEN_LOG2-1:0] shared_match_resp_tag;
-  wire [`NUM_SHARED_MATCH_PE*`MATCH_LEN_WIDTH-1:0] shared_match_resp_match_len;
 
   wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_req_valid;
   wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_req_ready;
@@ -130,11 +106,11 @@ module job_match_pe_cluster #(
       .match_req_group_history_addr(match_req_group_history_addr),
       .match_req_group_router_map(match_req_group_router_map),
       .match_req_group_strb(match_req_group_strb),
-      .match_req_valid({shared_match_req_valid, local_match_req_valid}),
-      .match_req_ready({shared_match_req_ready, local_match_req_ready}),
-      .match_req_head_addr({shared_match_req_head_addr, local_match_req_head_addr}),
-      .match_req_history_addr({shared_match_req_history_addr, local_match_req_history_addr}),
-      .match_req_tag({shared_match_req_tag, local_match_req_tag})
+      .match_req_valid(local_match_req_valid),
+      .match_req_ready(local_match_req_ready),
+      .match_req_head_addr(local_match_req_head_addr),
+      .match_req_history_addr(local_match_req_history_addr),
+      .match_req_tag(local_match_req_tag)
   );
 
   wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_resp_valid;
@@ -158,7 +134,7 @@ module job_match_pe_cluster #(
     for (i = 0; i < `NUM_LOCAL_MATCH_PE; i = i + 1) begin
       localparam size_log2 = (i == 0) ? `MATCH_PE_0_SIZE_LOG2 :
                                    (i == 1) ? `MATCH_PE_1_SIZE_LOG2 :
-                                   (i == 2) ? `MATCH_PE_2_SIZE_LOG2 : 0;
+                                   (i == 2) ? `MATCH_PE_2_SIZE_LOG2 : `MATCH_PE_3_SIZE_LOG2;
       match_pe #(
           .TAG_BITS (`LAZY_LEN_LOG2),
           .SIZE_LOG2(size_log2),
@@ -198,42 +174,14 @@ module job_match_pe_cluster #(
       .req_group_fire(match_req_group_valid & match_req_group_ready),
       .req_group_strb (match_req_group_strb),
 
-      .resp_valid({shared_match_resp_valid, local_match_resp_valid}),
-      .resp_ready({shared_match_resp_ready, local_match_resp_ready}),
-      .resp_tag({shared_match_resp_tag, local_match_resp_tag}),
-      .resp_match_len({shared_match_resp_match_len, local_match_resp_match_len}),
+      .resp_valid(local_match_resp_valid),
+      .resp_ready(local_match_resp_ready),
+      .resp_tag(local_match_resp_tag),
+      .resp_match_len(local_match_resp_match_len),
 
       .resp_group_valid(match_resp_group_valid),
       .resp_group_ready(match_resp_group_ready),
       .resp_group_match_len(match_resp_group_match_len)
-  );
-
-  mesh_adapter_job_pe #(
-      .JOB_PE_IDX(JOB_PE_IDX)
-  ) majp_inst[`NUM_SHARED_MATCH_PE-1:0] (
-      .clk  (clk),
-      .rst_n(rst_n),
-
-      .match_req_valid(shared_match_req_valid),
-      .match_req_ready(shared_match_req_ready),
-      .match_req_head_addr(shared_match_req_head_addr),
-      .match_req_history_addr(shared_match_req_history_addr),
-      .match_req_tag(shared_match_req_tag),
-
-      .to_mesh_valid  (to_mesh_valid),
-      .to_mesh_ready  (to_mesh_ready),
-      .to_mesh_x_dst  (to_mesh_x_dst),
-      .to_mesh_y_dst  (to_mesh_y_dst),
-      .to_mesh_payload(to_mesh_payload),
-
-      .from_mesh_valid  (from_mesh_valid),
-      .from_mesh_ready  (from_mesh_ready),
-      .from_mesh_payload(from_mesh_payload),
-
-      .match_resp_valid(shared_match_resp_valid),
-      .match_resp_ready(shared_match_resp_ready),
-      .match_resp_tag(shared_match_resp_tag),
-      .match_resp_match_len(shared_match_resp_match_len)
   );
 
   seq_packer seq_packer_inst (

@@ -34,184 +34,7 @@ module match_engine (
   always @(posedge clk) begin
     rst_n_p0_reg <= rst_n;
   end
-
-  // 所有 mesh router cluster 之间的连接
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_n_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_e_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_s_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_w_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_l_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] i_n_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] i_e_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] i_s_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] i_w_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] i_l_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] i_n_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] i_e_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] i_s_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] i_w_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] i_l_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] i_n_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] i_e_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] i_s_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] i_w_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] i_l_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_n_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_e_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_s_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_w_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] i_l_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_n_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_e_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_s_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_w_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_l_valid[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] o_n_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] o_e_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] o_s_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] o_w_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_X_SIZE_LOG2-1:0] o_l_dst_x[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] o_n_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] o_e_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] o_s_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] o_w_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_Y_SIZE_LOG2-1:0] o_l_dst_y[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] o_n_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] o_e_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] o_s_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] o_w_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE*`MESH_W-1:0] o_l_payload[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_n_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_e_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_s_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_w_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-  wire [`NUM_SHARED_MATCH_PE-1:0] o_l_ready[`MESH_X_SIZE-1:0][`MESH_Y_SIZE-1:0];
-
-  genvar mesh_x_idx, mesh_y_idx;
-  generate
-    // 创建 mesh router cluster, 建立 mesh router 之间连接
-    for (
-        mesh_x_idx = 0; mesh_x_idx < `MESH_X_SIZE; mesh_x_idx = mesh_x_idx + 1
-    ) begin : mesh_x_idx_gen
-      reg mesh_col_rst_n_p1_reg;
-      always @(posedge clk) begin
-        mesh_col_rst_n_p1_reg <= rst_n_p0_reg;
-      end
-      for (
-          mesh_y_idx = 0; mesh_y_idx < `MESH_Y_SIZE; mesh_y_idx = mesh_y_idx + 1
-      ) begin : mesh_y_idx_gen
-        mesh_router_cluster #(
-            .MESH_X_IDX(mesh_x_idx),
-            .MESH_Y_IDX(mesh_y_idx)
-        ) mesh_router_cluster_inst (
-            .clk(clk),
-            .rst_n(mesh_col_rst_n_p1_reg),
-            .i_n_valid(i_n_valid[mesh_x_idx][mesh_y_idx]),
-            .i_e_valid(i_e_valid[mesh_x_idx][mesh_y_idx]),
-            .i_s_valid(i_s_valid[mesh_x_idx][mesh_y_idx]),
-            .i_w_valid(i_w_valid[mesh_x_idx][mesh_y_idx]),
-            .i_l_valid(i_l_valid[mesh_x_idx][mesh_y_idx]),
-            .i_n_dst_x(i_n_dst_x[mesh_x_idx][mesh_y_idx]),
-            .i_e_dst_x(i_e_dst_x[mesh_x_idx][mesh_y_idx]),
-            .i_s_dst_x(i_s_dst_x[mesh_x_idx][mesh_y_idx]),
-            .i_w_dst_x(i_w_dst_x[mesh_x_idx][mesh_y_idx]),
-            .i_l_dst_x(i_l_dst_x[mesh_x_idx][mesh_y_idx]),
-            .i_n_dst_y(i_n_dst_y[mesh_x_idx][mesh_y_idx]),
-            .i_e_dst_y(i_e_dst_y[mesh_x_idx][mesh_y_idx]),
-            .i_s_dst_y(i_s_dst_y[mesh_x_idx][mesh_y_idx]),
-            .i_w_dst_y(i_w_dst_y[mesh_x_idx][mesh_y_idx]),
-            .i_l_dst_y(i_l_dst_y[mesh_x_idx][mesh_y_idx]),
-            .i_n_payload(i_n_payload[mesh_x_idx][mesh_y_idx]),
-            .i_e_payload(i_e_payload[mesh_x_idx][mesh_y_idx]),
-            .i_s_payload(i_s_payload[mesh_x_idx][mesh_y_idx]),
-            .i_w_payload(i_w_payload[mesh_x_idx][mesh_y_idx]),
-            .i_l_payload(i_l_payload[mesh_x_idx][mesh_y_idx]),
-            .i_n_ready(i_n_ready[mesh_x_idx][mesh_y_idx]),
-            .i_e_ready(i_e_ready[mesh_x_idx][mesh_y_idx]),
-            .i_s_ready(i_s_ready[mesh_x_idx][mesh_y_idx]),
-            .i_w_ready(i_w_ready[mesh_x_idx][mesh_y_idx]),
-            .i_l_ready(i_l_ready[mesh_x_idx][mesh_y_idx]),
-            .o_n_valid(o_n_valid[mesh_x_idx][mesh_y_idx]),
-            .o_e_valid(o_e_valid[mesh_x_idx][mesh_y_idx]),
-            .o_s_valid(o_s_valid[mesh_x_idx][mesh_y_idx]),
-            .o_w_valid(o_w_valid[mesh_x_idx][mesh_y_idx]),
-            .o_l_valid(o_l_valid[mesh_x_idx][mesh_y_idx]),
-            .o_n_dst_x(o_n_dst_x[mesh_x_idx][mesh_y_idx]),
-            .o_e_dst_x(o_e_dst_x[mesh_x_idx][mesh_y_idx]),
-            .o_s_dst_x(o_s_dst_x[mesh_x_idx][mesh_y_idx]),
-            .o_w_dst_x(o_w_dst_x[mesh_x_idx][mesh_y_idx]),
-            .o_l_dst_x(o_l_dst_x[mesh_x_idx][mesh_y_idx]),
-            .o_n_dst_y(o_n_dst_y[mesh_x_idx][mesh_y_idx]),
-            .o_e_dst_y(o_e_dst_y[mesh_x_idx][mesh_y_idx]),
-            .o_s_dst_y(o_s_dst_y[mesh_x_idx][mesh_y_idx]),
-            .o_w_dst_y(o_w_dst_y[mesh_x_idx][mesh_y_idx]),
-            .o_l_dst_y(o_l_dst_y[mesh_x_idx][mesh_y_idx]),
-            .o_n_payload(o_n_payload[mesh_x_idx][mesh_y_idx]),
-            .o_e_payload(o_e_payload[mesh_x_idx][mesh_y_idx]),
-            .o_s_payload(o_s_payload[mesh_x_idx][mesh_y_idx]),
-            .o_w_payload(o_w_payload[mesh_x_idx][mesh_y_idx]),
-            .o_l_payload(o_l_payload[mesh_x_idx][mesh_y_idx]),
-            .o_n_ready(o_n_ready[mesh_x_idx][mesh_y_idx]),
-            .o_e_ready(o_e_ready[mesh_x_idx][mesh_y_idx]),
-            .o_s_ready(o_s_ready[mesh_x_idx][mesh_y_idx]),
-            .o_w_ready(o_w_ready[mesh_x_idx][mesh_y_idx]),
-            .o_l_ready(o_l_ready[mesh_x_idx][mesh_y_idx])
-        );
-
-        if (mesh_x_idx > 0) begin
-          assign i_w_valid[mesh_x_idx][mesh_y_idx]   = o_e_valid[mesh_x_idx-1][mesh_y_idx];
-          assign i_w_dst_x[mesh_x_idx][mesh_y_idx]   = o_e_dst_x[mesh_x_idx-1][mesh_y_idx];
-          assign i_w_dst_y[mesh_x_idx][mesh_y_idx]   = o_e_dst_y[mesh_x_idx-1][mesh_y_idx];
-          assign i_w_payload[mesh_x_idx][mesh_y_idx] = o_e_payload[mesh_x_idx-1][mesh_y_idx];
-          assign o_e_ready[mesh_x_idx-1][mesh_y_idx] = i_w_ready[mesh_x_idx][mesh_y_idx];
-        end else begin
-          assign i_w_valid[mesh_x_idx][mesh_y_idx]   = 1'b0;
-          assign i_w_dst_x[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_w_dst_y[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_w_payload[mesh_x_idx][mesh_y_idx] = '0;
-        end
-
-        if (mesh_x_idx < `MESH_X_SIZE - 1) begin
-          assign i_e_valid[mesh_x_idx][mesh_y_idx]   = o_w_valid[mesh_x_idx+1][mesh_y_idx];
-          assign i_e_dst_x[mesh_x_idx][mesh_y_idx]   = o_w_dst_x[mesh_x_idx+1][mesh_y_idx];
-          assign i_e_dst_y[mesh_x_idx][mesh_y_idx]   = o_w_dst_y[mesh_x_idx+1][mesh_y_idx];
-          assign i_e_payload[mesh_x_idx][mesh_y_idx] = o_w_payload[mesh_x_idx+1][mesh_y_idx];
-          assign o_w_ready[mesh_x_idx+1][mesh_y_idx] = i_e_ready[mesh_x_idx][mesh_y_idx];
-        end else begin
-          assign i_e_valid[mesh_x_idx][mesh_y_idx]   = 1'b0;
-          assign i_e_dst_x[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_e_dst_y[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_e_payload[mesh_x_idx][mesh_y_idx] = '0;
-        end
-
-        if (mesh_y_idx > 0) begin
-          assign i_n_valid[mesh_x_idx][mesh_y_idx]   = o_s_valid[mesh_x_idx][mesh_y_idx-1];
-          assign i_n_dst_x[mesh_x_idx][mesh_y_idx]   = o_s_dst_x[mesh_x_idx][mesh_y_idx-1];
-          assign i_n_dst_y[mesh_x_idx][mesh_y_idx]   = o_s_dst_y[mesh_x_idx][mesh_y_idx-1];
-          assign i_n_payload[mesh_x_idx][mesh_y_idx] = o_s_payload[mesh_x_idx][mesh_y_idx-1];
-          assign o_s_ready[mesh_x_idx][mesh_y_idx-1] = i_n_ready[mesh_x_idx][mesh_y_idx];
-        end else begin
-          assign i_n_valid[mesh_x_idx][mesh_y_idx]   = 1'b0;
-          assign i_n_dst_x[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_n_dst_y[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_n_payload[mesh_x_idx][mesh_y_idx] = '0;
-        end
-
-        if (mesh_y_idx < `MESH_Y_SIZE - 1) begin
-          assign i_s_valid[mesh_x_idx][mesh_y_idx]   = o_n_valid[mesh_x_idx][mesh_y_idx+1];
-          assign i_s_dst_x[mesh_x_idx][mesh_y_idx]   = o_n_dst_x[mesh_x_idx][mesh_y_idx+1];
-          assign i_s_dst_y[mesh_x_idx][mesh_y_idx]   = o_n_dst_y[mesh_x_idx][mesh_y_idx+1];
-          assign i_s_payload[mesh_x_idx][mesh_y_idx] = o_n_payload[mesh_x_idx][mesh_y_idx+1];
-          assign o_n_ready[mesh_x_idx][mesh_y_idx+1] = i_s_ready[mesh_x_idx][mesh_y_idx];
-        end else begin
-          assign i_s_valid[mesh_x_idx][mesh_y_idx]   = 1'b0;
-          assign i_s_dst_x[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_s_dst_y[mesh_x_idx][mesh_y_idx]   = '0;
-          assign i_s_payload[mesh_x_idx][mesh_y_idx] = '0;
-        end
-      end
-    end
-  endgenerate
+  
 
   // 创建 hash batch bus
   wire hash_batch_bus_i_valid[`NUM_JOB_PE-1:0];
@@ -423,10 +246,9 @@ module match_engine (
   assign o_seq_packet_delim = seq_packet_bus_o_next_delim[`NUM_JOB_PE-1];
   assign seq_packet_bus_o_next_ready[`NUM_JOB_PE-1] = o_seq_packet_ready;
 
+  genvar job_pe_idx;
   generate
-    for (
-        mesh_x_idx = 0; mesh_x_idx < `MESH_X_SIZE; mesh_x_idx = mesh_x_idx + 1
-    ) begin : job_match_pe_gen_x
+    for (job_pe_idx = 0; job_pe_idx < `NUM_JOB_PE; job_pe_idx = job_pe_idx + 1) begin : job_match_pe_gen_x
       reg [`ADDR_WIDTH-1:0] match_pe_write_addr_reg;
       reg [`MATCH_PE_WIDTH*8-1:0] match_pe_write_data_reg;
       reg match_pe_write_enable_reg;
@@ -443,85 +265,40 @@ module match_engine (
       always @(posedge clk) begin
         col_smpc_jmpc_rst_n_p1_reg <= rst_n_p0_reg;
       end
-      for (
-          mesh_y_idx = 0; mesh_y_idx < `MESH_Y_SIZE; mesh_y_idx = mesh_y_idx + 1
-      ) begin : job_match_pe_gen_y
-        if (mesh_y_idx[0]) begin
-          // 创建 shared_match_pe_cluster
-          localparam shared_match_pe_slice_idx = {
-            mesh_y_idx[1+:`MESH_Y_SIZE_LOG2-1], mesh_x_idx[`MESH_X_SIZE_LOG2-1:0]
-          };
-          shared_match_pe_cluster #(
-              .SHARED_MATCH_PE_SLICE_IDX(shared_match_pe_slice_idx)
-          ) smpc_inst (
-              .clk  (clk),
-              .rst_n(col_smpc_jmpc_rst_n_p1_reg),
+        // 创建 job_match_pe_cluster
+        localparam job_match_pe_idx = job_pe_idx;
+        job_match_pe_cluster #(
+            .JOB_PE_IDX(job_match_pe_idx)
+        ) jmpc_inst (
+            .clk  (clk),
+            .rst_n(col_smpc_jmpc_rst_n_p1_reg),
 
-              .from_mesh_valid  (o_l_valid[mesh_x_idx][mesh_y_idx]),
-              .from_mesh_ready  (o_l_ready[mesh_x_idx][mesh_y_idx]),
-              .from_mesh_payload(o_l_payload[mesh_x_idx][mesh_y_idx]),
+            .hash_batch_valid(hash_batch_bus_o_this_valid[job_match_pe_idx]),
+            .hash_batch_head_addr(hash_batch_bus_o_this_head_addr[job_match_pe_idx]),
+            .hash_batch_history_valid(hash_batch_bus_o_this_history_valid[job_match_pe_idx]),
+            .hash_batch_history_addr(hash_batch_bus_o_this_history_addr[job_match_pe_idx]),
+            .hash_batch_meta_match_len(hash_batch_bus_o_this_meta_match_len[job_match_pe_idx]),
+            .hash_batch_meta_match_can_ext(hash_batch_bus_o_this_meta_match_can_ext[job_match_pe_idx]),
+            .hash_batch_delim(hash_batch_bus_o_this_delim[job_match_pe_idx]),
+            .hash_batch_ready(hash_batch_bus_o_this_ready[job_match_pe_idx]),
 
-              .to_mesh_valid  (i_l_valid[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_ready  (i_l_ready[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_x_dst  (i_l_dst_x[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_y_dst  (i_l_dst_y[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_payload(i_l_payload[mesh_x_idx][mesh_y_idx]),
+            // output seq packet port
+            .seq_packet_valid(seq_packet_bus_i_local_valid[job_match_pe_idx]),
+            .seq_packet_strb(seq_packet_bus_i_local_strb[job_match_pe_idx]),
+            .seq_packet_ll(seq_packet_bus_i_local_ll[job_match_pe_idx]),
+            .seq_packet_ml(seq_packet_bus_i_local_ml[job_match_pe_idx]),
+            .seq_packet_offset(seq_packet_bus_i_local_offset[job_match_pe_idx]),
+            .seq_packet_overlap(seq_packet_bus_i_local_overlap[job_match_pe_idx]),
+            .seq_packet_eoj(seq_packet_bus_i_local_eoj[job_match_pe_idx]),
+            .seq_packet_delim(seq_packet_bus_i_local_delim[job_match_pe_idx]),
+            .seq_packet_ready(seq_packet_bus_i_local_ready[job_match_pe_idx]),
 
-              .match_pe_write_addr  (match_pe_write_addr_reg),
-              .match_pe_write_data  (match_pe_write_data_reg),
-              .match_pe_write_enable(match_pe_write_enable_reg)
-          );
-        end else begin
-          // 创建 job_match_pe_cluster
-          localparam job_match_pe_idx = {
-            mesh_y_idx[1+:`MESH_Y_SIZE_LOG2-1], mesh_x_idx[`MESH_X_SIZE_LOG2-1:0]
-          };
-          job_match_pe_cluster #(
-              .JOB_PE_IDX(job_match_pe_idx)
-          ) jmpc_inst (
-              .clk  (clk),
-              .rst_n(col_smpc_jmpc_rst_n_p1_reg),
-
-              .hash_batch_valid(hash_batch_bus_o_this_valid[job_match_pe_idx]),
-              .hash_batch_head_addr(hash_batch_bus_o_this_head_addr[job_match_pe_idx]),
-              .hash_batch_history_valid(hash_batch_bus_o_this_history_valid[job_match_pe_idx]),
-              .hash_batch_history_addr(hash_batch_bus_o_this_history_addr[job_match_pe_idx]),
-              .hash_batch_meta_match_len(hash_batch_bus_o_this_meta_match_len[job_match_pe_idx]),
-              .hash_batch_meta_match_can_ext(hash_batch_bus_o_this_meta_match_can_ext[job_match_pe_idx]),
-              .hash_batch_delim(hash_batch_bus_o_this_delim[job_match_pe_idx]),
-              .hash_batch_ready(hash_batch_bus_o_this_ready[job_match_pe_idx]),
-
-              // output seq packet port
-              .seq_packet_valid(seq_packet_bus_i_local_valid[job_match_pe_idx]),
-              .seq_packet_strb(seq_packet_bus_i_local_strb[job_match_pe_idx]),
-              .seq_packet_ll(seq_packet_bus_i_local_ll[job_match_pe_idx]),
-              .seq_packet_ml(seq_packet_bus_i_local_ml[job_match_pe_idx]),
-              .seq_packet_offset(seq_packet_bus_i_local_offset[job_match_pe_idx]),
-              .seq_packet_overlap(seq_packet_bus_i_local_overlap[job_match_pe_idx]),
-              .seq_packet_eoj(seq_packet_bus_i_local_eoj[job_match_pe_idx]),
-              .seq_packet_delim(seq_packet_bus_i_local_delim[job_match_pe_idx]),
-              .seq_packet_ready(seq_packet_bus_i_local_ready[job_match_pe_idx]),
-
-              // local match pe write port
-              .match_pe_write_addr  (match_pe_write_addr_reg),
-              .match_pe_write_data  (match_pe_write_data_reg),
-              .match_pe_write_enable(match_pe_write_enable_reg),
-
-              // to mesh port
-              .to_mesh_valid  (i_l_valid[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_ready  (i_l_ready[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_x_dst  (i_l_dst_x[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_y_dst  (i_l_dst_y[mesh_x_idx][mesh_y_idx]),
-              .to_mesh_payload(i_l_payload[mesh_x_idx][mesh_y_idx]),
-
-              // from mesh port
-              .from_mesh_valid  (o_l_valid[mesh_x_idx][mesh_y_idx]),
-              .from_mesh_ready  (o_l_ready[mesh_x_idx][mesh_y_idx]),
-              .from_mesh_payload(o_l_payload[mesh_x_idx][mesh_y_idx])
-          );
-        end
+            // local match pe write port
+            .match_pe_write_addr  (match_pe_write_addr_reg),
+            .match_pe_write_data  (match_pe_write_data_reg),
+            .match_pe_write_enable(match_pe_write_enable_reg)
+        );
       end
-    end
   endgenerate
 
 `ifdef MATCH_ENGINE_DEBUG_LOG

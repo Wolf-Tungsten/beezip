@@ -1,6 +1,6 @@
 `include "parameters.vh"
 `include "util.vh"
-
+//`define SIMPLE_LAZY
 module lazy_summary_pipeline (
     input wire clk,
     
@@ -26,8 +26,76 @@ module lazy_summary_pipeline (
     output wire [`JOB_LEN_LOG2-1:0] o_move_forward
 );
 
-    localparam GAIN_BITS = `MATCH_LEN_WIDTH + 2;
+    `ifdef SIMPLE_LAZY
 
+    reg s3_match_done_reg;
+    reg [`ADDR_WIDTH-1:0] s3_job_head_addr_reg;
+    reg [`JOB_LEN_LOG2-1:0] s3_seq_head_ptr_reg;
+    reg [`JOB_LEN_LOG2+1-1:0] s3_ll_reg;
+    reg [`MATCH_LEN_WIDTH-1:0] s3_ml_reg;
+    reg [`SEQ_OFFSET_BITS-1:0] s3_offset_reg;
+    reg s3_eoj_reg;
+    reg [`SEQ_ML_BITS-1:0] s3_overlap_len_reg;
+    reg s3_move_to_next_job_reg;
+    reg [`JOB_LEN_LOG2-1:0] s3_move_forward_reg;
+    reg s3_delim_reg;
+
+    wire [`JOB_LEN_LOG2+1-1:0] ll = `ZERO_EXTEND(i_match_head_ptr, `JOB_LEN_LOG2+1) - `ZERO_EXTEND(i_seq_head_ptr, `JOB_LEN_LOG2+1);
+    wire [`MATCH_LEN_WIDTH-1:0] ml = `VEC_SLICE(i_match_len, 0, `MATCH_LEN_WIDTH);
+    wire [`MATCH_LEN_WIDTH+1-1:0] move_forward = ml + `ZERO_EXTEND(ll, `MATCH_LEN_WIDTH);
+    wire signed [`MATCH_LEN_WIDTH+1-1:0] s3_overlap_len;
+    assign s3_overlap_len = move_forward + `ZERO_EXTEND(i_seq_head_ptr, `MATCH_LEN_WIDTH) - `JOB_LEN;
+
+    always @(posedge clk) begin
+        s3_match_done_reg <= i_match_done;
+        s3_job_head_addr_reg <= i_job_head_addr;
+        s3_seq_head_ptr_reg <= i_seq_head_ptr;
+        s3_delim_reg <= i_delim;
+        if (s3_overlap_len >= 0) begin
+            if(i_delim) begin
+                s3_ll_reg <= `JOB_LEN - `ZERO_EXTEND(i_seq_head_ptr, `JOB_LEN_LOG2+1);
+                s3_ml_reg <= '0;
+                s3_offset_reg <= '0;
+                s3_eoj_reg <= 1'b1;
+                s3_overlap_len_reg <= '0;
+                s3_move_to_next_job_reg <= 1'b1;
+                s3_move_forward_reg <= '0;
+            end else begin
+                s3_ll_reg <= ll;
+                s3_ml_reg <= ml;
+                s3_offset_reg <= `VEC_SLICE(i_offset, 0, `SEQ_OFFSET_BITS); 
+                s3_eoj_reg <= 1'b1;
+                s3_overlap_len_reg <= s3_overlap_len[`SEQ_ML_BITS-1:0];
+                s3_move_to_next_job_reg <= 1'b1;
+                s3_move_forward_reg <= '0;
+            end
+        end else begin
+            s3_ll_reg <= ll;
+            s3_ml_reg <= ml;
+            s3_offset_reg <= `VEC_SLICE(i_offset, 0, `SEQ_OFFSET_BITS); 
+            s3_eoj_reg <= 1'b0;
+            s3_overlap_len_reg <= '0;
+            s3_move_to_next_job_reg <= 1'b0;
+            s3_move_forward_reg <= move_forward[`JOB_LEN_LOG2-1:0];
+        end
+    end
+
+    assign o_summary_done = s3_match_done_reg;
+    assign o_summary_job_head_addr = s3_job_head_addr_reg;
+    assign o_seq_head_ptr = s3_seq_head_ptr_reg;
+    assign o_summary_ll = `ZERO_EXTEND(s3_ll_reg, `SEQ_LL_BITS);
+    assign o_summary_ml = s3_ml_reg;
+    assign o_summary_offset = s3_offset_reg;
+    assign o_summary_delim = s3_delim_reg;
+    assign o_summary_eoj = s3_eoj_reg;
+    assign o_summary_overlap_len = s3_overlap_len_reg;
+    assign o_move_to_next_job = s3_move_to_next_job_reg;
+    assign o_move_forward = s3_move_forward_reg;
+
+    `endif
+
+    `ifndef SIMPLE_LAZY
+    localparam GAIN_BITS = `MATCH_LEN_WIDTH + 2;
     // s0 计算 ll，offset_bits，不包含 offset_bits 的 gain
     reg s0_match_done_reg;
     reg [`ADDR_WIDTH-1:0] s0_job_head_addr_reg;
@@ -227,5 +295,6 @@ module lazy_summary_pipeline (
     assign o_summary_overlap_len = s3_overlap_len_reg;
     assign o_move_to_next_job = s3_move_to_next_job_reg;
     assign o_move_forward = s3_move_forward_reg;
+    `endif
     
 endmodule
