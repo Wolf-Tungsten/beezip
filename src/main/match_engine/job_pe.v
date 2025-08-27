@@ -212,12 +212,12 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
         if(match_head_ptr_plus_reg[i] < `JOB_LEN) begin
           lazy_tbl_valid_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]];
           if(i == 0) begin
-            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]] && `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) < (2 ** `MATCH_PE_3_SIZE_LOG2 - 1);
+            lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]] && `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) < (2 ** `MATCH_PE_0_SIZE_LOG2 - 1);
           end else begin
             lazy_tbl_pending_reg[i] <= job_tbl_history_valid_reg[match_head_ptr_plus_idx[i]] 
             && job_tbl_meta_match_can_ext_reg[match_head_ptr_plus_idx[i]]
             && (`VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) != `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i-1], `SEQ_OFFSET_BITS)) // 相同 offset 不要重复匹配
-            && `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) < (2 ** `MATCH_PE_3_SIZE_LOG2 - 1); // 超出最大扩展范围的不要匹配
+            && `VEC_SLICE(job_tbl_offset_reg, match_head_ptr_plus_idx[i], `SEQ_OFFSET_BITS) < (2 ** `MATCH_PE_0_SIZE_LOG2 - 1); // 超出最大扩展范围的不要匹配
           end
           `VEC_SLICE(lazy_tbl_idx_reg, i, `JOB_LEN_LOG2) <= match_head_ptr_plus_idx[i];
           // lazy_table 中的地址已经增加了 META_HISTORY_LEN 偏移
@@ -257,12 +257,6 @@ module job_pe #(parameter JOB_PE_IDX = 0) (
   assign match_req_group_valid = (state_reg == S_LAZY_MATCH_REQ) && (|lazy_tbl_pending_reg);
   assign match_req_group_head_addr = lazy_tbl_head_addr_reg;
   assign match_req_group_history_addr = lazy_tbl_history_addr_reg;
-  assign match_req_group_strb = lazy_tbl_pending_reg;
-  match_req_route_table mrrt(
-    .offset(lazy_tbl_offset_reg),
-    .route_map(match_req_group_router_map)
-  );
-
   assign match_resp_group_ready = state_reg == S_LAZY_MATCH_RESP;
 
   lazy_summary_pipeline lsp_inst(

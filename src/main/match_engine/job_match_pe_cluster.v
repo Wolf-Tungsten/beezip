@@ -89,35 +89,6 @@ module job_match_pe_cluster #(
   );
 
 
-  wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_req_valid;
-  wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_req_ready;
-  wire [`NUM_LOCAL_MATCH_PE*`ADDR_WIDTH-1:0] local_match_req_head_addr;
-  wire [`NUM_LOCAL_MATCH_PE*`ADDR_WIDTH-1:0] local_match_req_history_addr;
-  wire [`NUM_LOCAL_MATCH_PE*`LAZY_LEN_LOG2-1:0] local_match_req_tag;
-
-  match_req_scheduler #(
-      .JOB_PE_IDX(JOB_PE_IDX)
-  ) match_req_scheduler_inst (
-      .clk(clk),
-      .rst_n(rst_n),
-      .match_req_group_valid(match_req_group_valid),
-      .match_req_group_ready(match_req_group_ready),
-      .match_req_group_head_addr(match_req_group_head_addr),
-      .match_req_group_history_addr(match_req_group_history_addr),
-      .match_req_group_router_map(match_req_group_router_map),
-      .match_req_group_strb(match_req_group_strb),
-      .match_req_valid(local_match_req_valid),
-      .match_req_ready(local_match_req_ready),
-      .match_req_head_addr(local_match_req_head_addr),
-      .match_req_history_addr(local_match_req_history_addr),
-      .match_req_tag(local_match_req_tag)
-  );
-
-  wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_resp_valid;
-  wire [`NUM_LOCAL_MATCH_PE-1:0] local_match_resp_ready;
-  wire [`NUM_LOCAL_MATCH_PE*`MATCH_LEN_WIDTH-1:0] local_match_resp_match_len;
-  wire [`NUM_LOCAL_MATCH_PE*`LAZY_LEN_LOG2-1:0] local_match_resp_tag;
-
   // add reg for match pe write
   reg [`ADDR_WIDTH-1:0] match_pe_write_addr_reg;
   reg [`MATCH_PE_WIDTH*8-1:0] match_pe_write_data_reg;
@@ -129,60 +100,34 @@ module job_match_pe_cluster #(
     match_pe_write_enable_reg <= match_pe_write_enable;
   end
 
-  genvar i;
-  generate
-    for (i = 0; i < `NUM_LOCAL_MATCH_PE; i = i + 1) begin
-      localparam size_log2 = (i == 0) ? `MATCH_PE_0_SIZE_LOG2 :
-                                   (i == 1) ? `MATCH_PE_1_SIZE_LOG2 :
-                                   (i == 2) ? `MATCH_PE_2_SIZE_LOG2 : `MATCH_PE_3_SIZE_LOG2;
-      match_pe #(
-          .TAG_BITS (`LAZY_LEN_LOG2),
-          .SIZE_LOG2(size_log2),
-          .LABEL("local_match_pe"),
-          .JOB_PE_IDX(JOB_PE_IDX),
-          .MATCH_PE_IDX(i)
-          //.LABEL($sformatf("job_pe_%0d_match_pe_%0d", JOB_PE_IDX, i))
-      ) local_match_pe_inst (
-          .clk(clk),
-          .rst_n(rst_n),
-          .match_req_valid(local_match_req_valid[i]),
-          .match_req_ready(local_match_req_ready[i]),
-          .match_req_tag(local_match_req_tag[i*`LAZY_LEN_LOG2+:`LAZY_LEN_LOG2]),
-          .match_req_head_addr(local_match_req_head_addr[i*`ADDR_WIDTH+:`ADDR_WIDTH]),
-          .match_req_history_addr(local_match_req_history_addr[i*`ADDR_WIDTH+:`ADDR_WIDTH]),
 
-          .match_resp_valid(local_match_resp_valid[i]),
-          .match_resp_ready(local_match_resp_ready[i]),
-          .match_resp_tag(local_match_resp_tag[i*`LAZY_LEN_LOG2+:`LAZY_LEN_LOG2]),
-          .match_resp_match_len(local_match_resp_match_len[i*`MATCH_LEN_WIDTH+:`MATCH_LEN_WIDTH]),
+    match_pe #(
+        .TAG_BITS (1),
+        .SIZE_LOG2(`MATCH_PE_0_SIZE_LOG2),
+        .LABEL("local_match_pe"),
+        .JOB_PE_IDX(JOB_PE_IDX),
+        .MATCH_PE_IDX(0)
+        //.LABEL($sformatf("job_pe_%0d_match_pe_%0d", JOB_PE_IDX, i))
+    ) local_match_pe_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .match_req_valid(match_req_group_valid),
+        .match_req_ready(match_req_group_ready),
+        .match_req_tag('0),
+        .match_req_head_addr(match_req_group_head_addr),
+        .match_req_history_addr(match_req_group_history_addr),
 
-          .write_addr(match_pe_write_addr_reg),
-          .write_data(match_pe_write_data_reg),
-          .write_enable(match_pe_write_enable_reg),
-          .write_history_enable(1'b1)
-      );
-    end
-  endgenerate
+        .match_resp_valid(match_resp_group_valid),
+        .match_resp_ready(match_resp_group_ready),
+        .match_resp_tag(),
+        .match_resp_match_len(match_resp_group_match_len),
 
-  // match_resp_sync
-  match_resp_sync #(
-      .JOB_PE_IDX(JOB_PE_IDX)
-  ) match_resp_sync_inst (
-      .clk  (clk),
-      .rst_n(rst_n),
+        .write_addr(match_pe_write_addr_reg),
+        .write_data(match_pe_write_data_reg),
+        .write_enable(match_pe_write_enable_reg),
+        .write_history_enable(1'b1)
+    );
 
-      .req_group_fire(match_req_group_valid & match_req_group_ready),
-      .req_group_strb (match_req_group_strb),
-
-      .resp_valid(local_match_resp_valid),
-      .resp_ready(local_match_resp_ready),
-      .resp_tag(local_match_resp_tag),
-      .resp_match_len(local_match_resp_match_len),
-
-      .resp_group_valid(match_resp_group_valid),
-      .resp_group_ready(match_resp_group_ready),
-      .resp_group_match_len(match_resp_group_match_len)
-  );
 
   seq_packer seq_packer_inst (
       .clk  (clk),

@@ -40,7 +40,7 @@
 // new parameter
 
 
-`define MATCH_PE_0_SIZE_LOG2 12
+`define MATCH_PE_0_SIZE_LOG2 16
 `define MATCH_PE_1_SIZE_LOG2 12
 `define MATCH_PE_2_SIZE_LOG2 14
 `define MATCH_PE_3_SIZE_LOG2 15
@@ -55,9 +55,9 @@
 `define MATCH_LEN_WIDTH (`MAX_MATCH_LEN_LOG2+1)
 `define MIN_MATCH_LEN 4
 
-`define LAZY_LEN 4
+`define LAZY_LEN 1
 `define LAZY_LEN_LOG2 ($clog2(`LAZY_LEN))
-`define NUM_LOCAL_MATCH_PE 4
+`define NUM_LOCAL_MATCH_PE 1
 `define NUM_SHARED_MATCH_PE 0
 `define NUM_MATCH_REQ_CH (`NUM_LOCAL_MATCH_PE + `NUM_SHARED_MATCH_PE)
 
