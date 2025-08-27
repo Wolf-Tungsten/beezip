@@ -1,6 +1,6 @@
 `include "parameters.vh"
 `include "util.vh"
-//`define SIMPLE_LAZY
+`define SIMPLE_LAZY
 module lazy_summary_pipeline (
     input wire clk,
     
