@@ -39,10 +39,12 @@ BETTER_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/better
 
 run_basic_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	mkdir -p ${BASIC_TEST_SIM_OUT_DIR}
+	rm -f ${BEEZIP_RUN_DIR}/sram2p_usage.csv
 	cp ${CORPUS_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/
 	${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip +inputFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt +hqt+1 +enableHashCheck+1
 	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt
 	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq_serialized 
+	python3 utils/count_sram2p.py
 
 run_tmp_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	mkdir -p ${BASIC_TEST_SIM_OUT_DIR}

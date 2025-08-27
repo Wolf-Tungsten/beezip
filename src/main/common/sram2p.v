@@ -10,6 +10,11 @@ module sram2p #(parameter AWIDTH = 12, DWIDTH = 72, NBPIPE=3)
      input wire [AWIDTH-1:0] read_address, //<addrb>
      output wire [DWIDTH-1:0] read_data);
 
+    integer fd;
+    initial begin
+        fd = $fopen("run/sram2p_usage.csv", "a");
+        $fdisplay(fd, "%0d,%0d", DWIDTH, (2**AWIDTH));
+    end
 
     (* ram_style = "ultra" *)
     reg [DWIDTH-1:0] mem[(1<<AWIDTH)-1:0];        // Memory Declaration
