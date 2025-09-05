@@ -48,6 +48,7 @@ bool portBit(T &port, int i) {
 BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
                                  std::unique_ptr<Vbeezip> &dut,
                                  const std::string &inputFilePath, int hqt,
+                                 int ws,
                                  bool enableHashCheck) {
   this->contextp = std::move(contextp);
   this->dut = std::move(dut);
@@ -59,6 +60,7 @@ BeeZipTestbench::BeeZipTestbench(std::unique_ptr<VerilatedContext> &contextp,
   this->fileIOptr =
       std::make_unique<BeeZipFileIO>(inputFilePath, JOB_LEN, HASH_ISSUE_WIDTH);
   this->hqt = hqt;
+  this->ws = ws;
   this->enableHashCheck = enableHashCheck;
   interruptSimulation = false;
   std::signal(SIGSEGV, beezip_tb::BeeZipTestbench::signalHandler);
@@ -89,13 +91,14 @@ void BeeZipTestbench::run() {
   dut->i_valid = 0;
   dut->o_seq_packet_ready = 0;
   dut->cfg_max_queued_req_num = hqt;
+  dut->cfg_window_size = ws;
   bool success = true;
   try {
     // reset
     while (contextp->time() < 10) {
       dut->clk = !dut->clk;
       dut->eval();
-      tfp->dump(contextp->time());
+      //tfp->dump(contextp->time());
       contextp->timeInc(1);
     }
     dut->o_seq_packet_ready = 1;
@@ -104,7 +107,7 @@ void BeeZipTestbench::run() {
     while (!interruptSimulation && !outputEof) {
       dut->clk = !dut->clk;
       dut->eval();
-      tfp->dump(contextp->time());
+      //tfp->dump(contextp->time());
       contextp->timeInc(1);
       if (dut->clk) {
         // 读取输出，更新 testbench 内部状态

@@ -5,6 +5,8 @@ module hash_pe_array(
         input wire clk,
         input wire rst_n,
 
+        input wire [`ADDR_WIDTH-1:0] cfg_window_size,
+
         input wire input_valid,
         input wire [`NUM_HASH_PE-1:0] input_mask,
         input wire [`NUM_HASH_PE*`ADDR_WIDTH-1:0] input_addr_vec,
@@ -381,7 +383,7 @@ module hash_pe_array(
 
                 meta_shift_buffer_history_valid_vec[row*`ROW_SIZE + col] =
                                                   bank_readout_history_valid_vec[row*`ROW_SIZE + col] && // history valid
-                                                  (write_stage_addr_vec_reg_q[row * `ADDR_WIDTH +: `ADDR_WIDTH] - meta_shift_buffer_history_addr_vec[(row*`ROW_SIZE + col)*`ADDR_WIDTH +: `ADDR_WIDTH] < (`WINDOW_SIZE-1)); // in sliding window
+                                                  (write_stage_addr_vec_reg_q[row * `ADDR_WIDTH +: `ADDR_WIDTH] - meta_shift_buffer_history_addr_vec[(row*`ROW_SIZE + col)*`ADDR_WIDTH +: `ADDR_WIDTH] < cfg_window_size - 1); // in sliding window
                 
 
 

@@ -26,7 +26,7 @@ class BeeZipTestbench {
  public:
   BeeZipTestbench(std::unique_ptr<VerilatedContext>& contextp,
                   std::unique_ptr<Vbeezip>& dut,
-                  const std::string& inputFilePath, int hqt, bool enableHashCheck);
+                  const std::string& inputFilePath, int hqt, int ws, bool enableHashCheck);
   ~BeeZipTestbench();
   void run();
   static std::atomic<bool> interruptSimulation;
@@ -42,6 +42,7 @@ class BeeZipTestbench {
 
   std::unique_ptr<BeeZipFileIO> fileIOptr;
   int hqt;
+  int ws;
   bool enableHashCheck;
 
   bool inputEof;

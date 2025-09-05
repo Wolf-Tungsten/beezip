@@ -33,15 +33,23 @@ build_entropy_encoder:
 
 
 BASIC_TEST_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/basic_test
-FAST_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/fast
-BALANCED_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/balanced
-BETTER_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/better
+GZIP_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/gzip
+ZSTD_SIM_OUT_DIR := ${BEEZIP_RUN_DIR}/sim_out/zstd
 
 run_basic_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	mkdir -p ${BASIC_TEST_SIM_OUT_DIR}
 	rm -f ${BEEZIP_RUN_DIR}/sram2p_usage.csv
 	cp ${CORPUS_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/
-	${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip +inputFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt +hqt+1 +enableHashCheck+1
+	${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip +inputFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt +hqt+1 +enableHashCheck+1 +wlog+20
+	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt
+	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq_serialized 
+	python3 utils/count_sram2p.py
+
+run_gzip_basic_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
+	mkdir -p ${BASIC_TEST_SIM_OUT_DIR}
+	rm -f ${BEEZIP_RUN_DIR}/sram2p_usage.csv
+	cp ${CORPUS_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/
+	${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip +inputFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt +hqt+1 +enableHashCheck+1 +wlog+15
 	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/alice29.txt
 	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt ${BASIC_TEST_SIM_OUT_DIR}/alice29.txt.beezip_seq_serialized 
 	python3 utils/count_sram2p.py
@@ -53,38 +61,33 @@ run_tmp_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer +seqFilePath+${BASIC_TEST_SIM_OUT_DIR}/tmp_input.beezip_seq +rawFilePath+${BASIC_TEST_SIM_OUT_DIR}/tmp_input
 	${BEEZIP_SIM_DIR}/externalSequenceProducer ${BASIC_TEST_SIM_OUT_DIR}/tmp_input ${BASIC_TEST_SIM_OUT_DIR}/tmp_input.beezip_seq_serialized 
 
-run_fast_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
+run_zstd_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
 	--sim_path ${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip \
 	--serializer_path ${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer \
 	--entropy_encoder_path ${BEEZIP_SIM_DIR}/externalSequenceProducer \
 	--input_file_dir ${CORPUS_DIR}/silesia \
-	--output_file_dir ${FAST_SIM_OUT_DIR} \
-	--beezip_mode fast
+	--output_file_dir ${ZSTD_SIM_OUT_DIR} \
+	--beezip_mode fast \
+	--beezip_wlog 20
+	python3 ${BEEZIP_UTILS_DIR}/merge_sim_result.py --output_file_dir=${ZSTD_SIM_OUT_DIR}
 
-run_balanced_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
+run_gzip_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
 	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
 	--sim_path ${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip \
 	--serializer_path ${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer \
 	--entropy_encoder_path ${BEEZIP_SIM_DIR}/externalSequenceProducer \
 	--input_file_dir ${CORPUS_DIR}/silesia \
-	--output_file_dir ${BALANCED_SIM_OUT_DIR} \
-	--beezip_mode balanced
+	--output_file_dir ${GZIP_SIM_OUT_DIR} \
+	--beezip_mode fast \
+	--beezip_wlog 15
+	python3 ${BEEZIP_UTILS_DIR}/merge_sim_result.py --output_file_dir=${GZIP_SIM_OUT_DIR}
 
-run_better_test: build_beezip_tb build_seq_serializer_tb build_entropy_encoder
-	python3 ${BEEZIP_UTILS_DIR}/run_batch_sim.py \
-	--sim_path ${BEEZIP_SIM_DIR}/beezip_tb/Vbeezip \
-	--serializer_path ${BEEZIP_SIM_DIR}/seq_serializer_tb/Vseq_serializer \
-	--entropy_encoder_path ${BEEZIP_SIM_DIR}/externalSequenceProducer \
-	--input_file_dir ${CORPUS_DIR}/silesia \
-	--output_file_dir ${BETTER_SIM_OUT_DIR} \
-	--beezip_mode better
 
 clean:
 	make -C ${ZSTD_EXT_SEQ_PROD_PATH} clean
 	rm -rf ${BEEZIP_RUN_DIR}
 	rm -rf ${BEEZIP_SIM_DIR}
-	mkdir -p ${FAST_SIM_OUT_DIR}
-	mkdir -p ${BALANCED_SIM_OUT_DIR}
-	mkdir -p ${BETTER_SIM_OUT_DIR}
+	mkdir -p ${GZIP_SIM_OUT_DIR}
+	mkdir -p ${ZSTD_SIM_OUT_DIR}
 	clear

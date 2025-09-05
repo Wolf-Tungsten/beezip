@@ -6,6 +6,7 @@ module hash_engine(
     input wire rst_n,
 
     input wire [`HASH_ISSUE_WIDTH_LOG2+1-1:0] cfg_max_queued_req_num, 
+    input wire [`ADDR_WIDTH-1:0] cfg_window_size,
 
     input  wire i_valid,
     output wire i_ready,
@@ -145,6 +146,8 @@ module hash_engine(
     hash_pe_array u_hash_pe_array(
         .clk(clk),
         .rst_n(rst_n),
+
+        .cfg_window_size(cfg_window_size),
 
         .input_valid(valid_between_pre_schd_pe_array),
         .input_mask(mask_between_pre_schd_pe_array),
